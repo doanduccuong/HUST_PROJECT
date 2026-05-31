@@ -33,3 +33,21 @@
 *.njsproj
 *.sln
 *.swp
+
+# Python temporary files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+
+# Python Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+
+# DeepFace local datastores and weights
+*.pkl
+*.ldsa

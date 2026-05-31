@@ -1,0 +1,83 @@
+\section*{CHƯƠNG 2. CƠ SỞ LÝ THUYẾT VÀ TỔNG QUAN TÀI LIỆU}
+\addcontentsline{toc}{section}{\numberline{}CHƯƠNG 2. CƠ SỞ LÝ THUYẾT VÀ TỔNG QUAN TÀI LIỆU}
+\setcounter{section}{2}
+\setcounter{subsection}{0}
+\setcounter{figure}{0}
+\setcounter{table}{0}
+
+\subsection{Quy trình phân tích khuôn mặt thích ứng 5 giai đoạn}
+Để giải quyết bài toán nhận dạng và phân tích khách hàng trong bối cảnh có sự thay đổi lớn về diện mạo do can thiệp thẩm mỹ, hệ thống đề xuất của đồ án được xây dựng dựa trên một quy trình xử lý 5 giai đoạn tích hợp tính thích ứng cao. Quy trình này bao gồm các bước: (1) Phát hiện khuôn mặt (Detect), (2) Căn chỉnh khuôn mặt thích ứng (Align), (3) Chuẩn hóa kết cấu (Normalize), (4) Biểu diễn đặc trưng đa phân vùng và động (Represent), và (5) Xác thực thích ứng đa tiêu chí (Verify).
+
+\subsubsection{Phát hiện khuôn mặt (Detect)}
+
+\textbf{Nguyên lý xử lý trong các mô hình hiện tại:} Giai đoạn phát hiện khuôn mặt có nhiệm vụ xác định vị trí vùng mặt trong ảnh hoặc luồng video đầu vào. Các mô hình hiện tại thường sử dụng các bộ dò truyền thống như OpenCV Haar Cascade (dựa trên các bộ lọc Haar đặc trưng), Dlib HOG (Histogram of Oriented Gradients), hoặc các mô hình học sâu nhẹ như Single Shot Multibox Detector (SSD) kết hợp mạng nền ResNet để tối ưu hóa tốc độ xử lý thời gian thực.
+
+\textbf{Hạn chế đối với khuôn mặt qua can thiệp thẩm mỹ và che khuất:} Các bộ dò truyền thống rất nhạy cảm với sự che khuất hoặc biến dạng cấu trúc biên. Khi khách hàng có sự sưng tấy cục bộ nghiêm trọng, đeo băng gạc y tế sau phẫu thuật, hoặc đặc biệt là đeo khẩu trang y tế che kín hơn nửa khuôn mặt, các đặc trưng hình học biên bị phá vỡ khiến hệ thống dễ bị mất dấu khuôn mặt hoàn toàn hoặc tăng tỷ lệ báo động giả (nhận diện nhầm các vật thể xung quanh thành khuôn mặt).
+
+\textbf{Phương pháp cải tiến thích ứng đề xuất:} Trong dự án này, em sử dụng bộ dò học sâu tiên tiến \textbf{RetinaFace} \cite{retinaface} tích hợp mạng kim tự tháp đặc trưng đa tầng (Feature Pyramid Network - FPN) và cơ chế Attention. RetinaFace cho phép phát hiện khuôn mặt bền vững ngay cả dưới các tác động che khuất một phần bởi băng gạc y tế hoặc che khuất diện rộng khi đeo khẩu trang. Hàm mục tiêu tối ưu hóa đa nhiệm của bộ dò RetinaFace được biểu diễn qua phương trình:
+\begin{equation}
+    L = L_{cls}(p_i, p_i^*) + \lambda_1 p_i^* L_{box}(t_i, t_i^*) + \lambda_2 p_i^* L_{pts}(l_i, l_i^*)
+\end{equation}
+Trong đó $L_{cls}$ là hàm mất mát phân loại khuôn mặt, $L_{box}$ là hàm hồi quy bounding box, và $L_{pts}$ là hàm hồi quy điểm mốc sơ bộ. Việc kết hợp RetinaFace còn đồng thời trích xuất các điểm mốc giải phẫu chính xác làm tiền đề cho bước căn chỉnh tiếp theo. Để xác định chính xác trạng thái đeo khẩu trang y tế che khuất của khách hàng nhằm tự động kích hoạt chế độ thích ứng tương ứng, em tích hợp thêm một bộ phân loại nhị phân dựa trên cấu trúc mạng MobileNetV2 tối ưu \cite{loey2021framework} được huấn luyện trên cơ sở dữ liệu MaskedFace-Net \cite{maskedface_net}.
+
+\subsubsection{Căn chỉnh khuôn mặt thích ứng (Align)}
+
+\textbf{Nguyên lý xử lý trong các mô hình hiện tại:} Hầu hết các luồng căn chỉnh khuôn mặt tiêu chuẩn hiện nay sử dụng bộ dò điểm mốc (như Dlib 68 landmarks) để xác định vị trí của các mốc giải phẫu chính (mắt, mũi, miệng). Phép biến đổi Affine hai chiều tuyến tính sau đó được áp dụng để xoay và căn chỉnh khuôn mặt thẳng đứng dựa trên đường trục nối hai mắt.
+
+\textbf{Hạn chế đối với khuôn mặt qua can thiệp thẩm mỹ và che khuất:} Phẫu thuật thẩm mỹ cấu trúc (như nâng mũi, độn cằm, cắt mí) trực tiếp làm thay đổi vị trí giải phẫu thực tế của các mốc hình học, gây ra hiện tượng trôi lệch điểm mốc (\textit{landmark drift}). Tương tự, khi đeo khẩu trang, các điểm mốc từ mũi xuống cằm bị che lấp hoàn toàn, dẫn đến việc dự đoán điểm mốc bị sai lệch nghiêm trọng. Khi đó, phép biến đổi Affine tiêu chuẩn (vốn dựa trên giả định cấu trúc khuôn mặt bất biến) sẽ tính toán sai lệch góc xoay, dẫn đến ảnh khuôn mặt sau khi căn chỉnh bị méo hoặc lệch tâm giải phẫu, làm hỏng đặc trưng đưa vào mạng trích xuất phía sau.
+
+\textbf{Phương pháp cải tiến thích ứng đề xuất:} Trong dự án này, em đề xuất giải pháp \textbf{Căn chỉnh thích ứng có trọng số (Weighted Alignment)} dựa trên bản đồ điểm mốc mật độ cao gồm 468 điểm (Dense Landmarks). Em sử dụng phép biến đổi Affine để ánh xạ các điểm mốc thực tế $P_i(x_i, y_i)$ sang tọa độ chuẩn $Q_i(u_i, v_i)$. Để loại bỏ ảnh hưởng của các vùng bị thay đổi cấu trúc hoặc bị che khuất bởi khẩu trang, mỗi điểm mốc thứ $i$ được gán một trọng số tin cậy $w_i \in [0, 1]$ tương ứng với mức độ khả dụng và bất biến của khu vực giải phẫu chứa điểm mốc đó. 
+
+Cụ thể, khi phát hiện có khẩu trang che khuất, toàn bộ các điểm mốc nằm trong vùng bị che (vùng trung và hạ mặt) sẽ được gán trọng số bằng không ($w_i = 0$), hệ thống chỉ sử dụng các điểm mốc vùng xương trán, hốc mắt và thái dương bất biến để tính toán ($w_i \approx 1.0$). Đây là sự mở rộng của phương pháp phân tích dạng hình học Procrustes có trọng số (Weighted Procrustes Analysis) \cite{weighted_procrustes}. Bài toán tối ưu hóa phép biến đổi Affine được biểu diễn dưới dạng cực tiểu hóa tổng bình phương sai số có trọng số:
+\begin{equation}
+    \min_{M} \sum_{i=1}^{N} w_i \left\| Q_i - M(P_i) \right\|^2
+\end{equation}
+Trong đó $M$ là ma trận biến đổi Affine kích thước $2 \times 3$. Việc áp dụng trọng số thích ứng giúp khuôn mặt sau khi căn chỉnh không bị méo hoặc lệch tâm do sự trôi lệch hay biến mất của các điểm mốc đã bị can thiệp phẫu thuật hoặc che lấp bởi khẩu trang.
+
+\subsubsection{Chuẩn hóa hình ảnh và kết cấu da (Normalize)}
+
+\textbf{Nguyên lý xử lý trong các mô hình hiện tại:} Quy trình tiền xử lý thông thường chỉ dừng lại ở việc thay đổi kích thước ảnh (resize) về độ phân giải đầu vào chuẩn của mô hình học sâu (như $112 \times 112$ hoặc $224 \times 224$ pixel) và chuẩn hóa dải màu pixel về khoảng $[0, 1]$ hoặc $[-1, 1]$ nhằm ổn định quá trình hội tụ của mạng nơ-ron.
+
+\textbf{Hạn chế đối với khuôn mặt qua can thiệp thẩm mỹ và che khuất:} Can thiệp thẩm mỹ (phẫu thuật hoặc trị liệu nội khoa như tiêm filler, botox, laser) tạo ra các biến đổi cơ học tạm thời trên da trong giai đoạn phục hồi (sưng tấy, vết đỏ ửng, bầm tím cục bộ). Những thay đổi kết cấu đột ngột này tạo ra các nhiễu tần số cao, khiến mạng nơ-ron sâu trích xuất nhầm các đặc trưng tạm thời này và coi đó là đặc trưng định danh tĩnh của khách hàng, gây ra hiện tượng nhận diện sai lệch. Ngoài ra, việc xử lý tiền xử lý trên chất liệu vải của khẩu trang y tế cũng có thể tạo ra các đặc trưng giả nếu không được tách biệt khỏi các vùng da thực.
+
+\textbf{Phương pháp cải tiến thích ứng đề xuất:} Trong dự án này, em đề xuất một quy trình chuẩn hóa kép kết hợp phân vùng động:
+\begin{itemize}
+    \item \textbf{Chuẩn hóa ánh sáng thích ứng:} Áp dụng thuật toán cân bằng biểu đồ tần suất thích ứng giới hạn độ tương phản (Contrast Limited Adaptive Histogram Equalization - CLAHE) trên kênh độ sáng (L) của không gian màu LAB để loại bỏ bóng đổ cục bộ và ổn định độ tương phản dưới các góc chiếu sáng không đồng nhất của camera.
+    \item \textbf{Lọc mịn kết cấu bầm/sưng thích ứng:} Em sử dụng bộ lọc song phương (Bilateral Filter) \cite{bilateral} để làm mịn các vùng da tổn thương tạm thời mà vẫn bảo toàn các đường nét biên góc cạnh chính của khuôn mặt. Đối với trường hợp đeo khẩu trang, bộ lọc này được áp dụng khoanh vùng động chỉ trên các vùng da thực được lộ ra (vùng trán, quanh mắt) nhằm tránh tiêu tốn tài nguyên xử lý vô ích lên bề mặt khẩu trang. Phương trình lọc song phương tại điểm ảnh $x$ được định nghĩa:
+    \begin{equation}
+        I^{filtered}(x) = \frac{1}{W_p} \sum_{x_i \in \Omega} I(x_i) f_r(\|I(x_i) - I(x)\|) g_s(\|x_i - x\|)
+    \end{equation}
+    Trong đó $g_s$ là hàm nhân không gian để đo khoảng cách địa lý, $f_r$ là hàm nhân cường độ để đo sự khác biệt màu sắc, và $W_p$ là hệ số chuẩn hóa.
+\end{itemize}
+
+\subsubsection{Biểu diễn đặc trưng đa phân vùng và động lực học (Represent)}
+
+\textbf{Nguyên lý xử lý trong các mô hình hiện tại:} Các mô hình nhận diện khuôn mặt học sâu hiện đại (như ArcFace, FaceNet, VGG-Face) trích xuất một vector đặc trưng toàn cục tĩnh (Global Embedding Vector) kích thước 128 hoặc 512 chiều từ toàn bộ khuôn mặt tĩnh 2D thông qua các mạng CNN sâu.
+
+\textbf{Hạn chế đối với khuôn mặt qua can thiệp thẩm mỹ và che khuất:} Mạng nơ-ron sâu học các đặc trưng mang tính toàn cục. Khi một bộ phận quan trọng trên khuôn mặt bị thay đổi hoàn toàn cấu trúc hoặc bị che khuất diện rộng bởi khẩu trang y tế (che khuất toàn bộ vùng mũi, miệng và cằm), vector đặc trưng toàn cục sẽ bị dịch chuyển cực kỳ xa trong không gian latent space, dẫn đến sai số nhận diện lớn. Hơn nữa, các mô hình này hoàn toàn bỏ qua các đặc trưng động lực học chuyển động – thứ sinh trắc học hành vi bền vững hơn trước các can thiệp cơ học bề mặt hay che phủ vật lý.
+
+\textbf{Phương pháp cải tiến thích ứng đề xuất:} Để khắc phục nhược điểm của đặc trưng tĩnh toàn cục, trong dự án này, em đề xuất cơ chế biểu diễn kết hợp song song giữa hai thành phần:
+\begin{enumerate}
+    \item \textbf{Biểu diễn tĩnh đa phân vùng (Multi-region Static Representation):} Chia khuôn mặt thành 3 vùng độc lập về mặt thẩm mỹ: Vùng thượng (trán và mắt), Vùng trung (mũi và gò má), và Vùng hạ (miệng và cằm). Em thực hiện trích xuất các vector đặc trưng cục bộ độc lập $E_{upper}, E_{middle}, E_{lower} \in \mathbb{R}^{d}$ cho từng vùng thông qua mạng học sâu ArcFace \cite{arcface}. Khi đeo khẩu trang, phân vùng trung và hạ bị mất thông tin, hệ thống sẽ bảo toàn và chỉ sử dụng vector vùng thượng mặt $E_{upper}$. Phân vùng thượng mặt được chứng minh là đặc trưng tĩnh bất biến mạnh mẽ nhất dưới tác động của khẩu trang y tế, được bảo chứng qua các nghiên cứu nhận diện khuôn mặt đeo khẩu trang dựa trên cơ chế Attention cục bộ \cite{anwar2020masked} và đặc trưng cục bộ sâu (Deep Local Features) \cite{li2018occlusion, hariri2020masked}.
+    \item \textbf{Biểu diễn động lực học biểu cảm (Dynamic Temporal Representation):} Trích xuất chuỗi thời gian chuyển động của cơ mặt thông qua các đơn vị hành động cơ mặt trong hệ thống mã hóa FACS (Facial Action Coding System) \cite{facs} khi khách hàng thực hiện các cử động cơ tự nhiên (như chớp mắt, nheo mắt hoặc chuyển động cơ chân mày) trong chuỗi video ngắn. Vector đặc trưng động $E_{dynamic}$ phản ánh hành vi biểu cảm cá nhân – một đặc trưng sinh trắc học hành vi rất khó bị thay đổi bởi phẫu thuật cấu trúc hay che phủ vật lý.
+\end{enumerate}
+
+\subsubsection{Xác thực thích ứng đa tiêu chí (Verify)}
+
+\textbf{Nguyên lý xử lý trong các mô hình hiện tại:} Các bộ so khớp hiện nay thực hiện tính toán khoảng cách Euclidean hoặc khoảng cách Cosine giữa hai vector đặc trưng toàn cục, sau đó đối chiếu trực tiếp với một ngưỡng cứng cố định (Static Hard Threshold $\theta$), ví dụ: nếu khoảng cách Cosine nhỏ hơn $0.40$ thì xác thực thành công.
+
+\textbf{Hạn chế đối với khuôn mặt qua can thiệp thẩm mỹ và che khuất:} Do sự can thiệp thẩm mỹ hoặc đeo khẩu trang y tế, khoảng cách Cosine giữa ảnh hiện tại và ảnh gốc của cùng một khách hàng thường tăng lên đột biến vượt qua ngưỡng cứng cố định $\theta = 0.40$. Điều này trực tiếp gây ra lỗi từ chối sai (False Reject Error), khiến khách hàng không thể xác thực danh tính khi quay lại cơ sở.
+
+\textbf{Phương pháp cải tiến thích ứng đề xuất:} Trong dự án này, em thiết lập cơ chế xác thực thích ứng đa tầng (Multi-criteria Decision Fusion). Độ tương đồng giữa ảnh hiện tại ($t$) và ảnh gốc ($g$) được tính toán độc lập trên các thành phần đặc trưng:
+\begin{equation}
+    S_{region} = \text{Cosine}(E_{region}^{(t)}, E_{region}^{(g)}) = \frac{E_{region}^{(t)} \cdot E_{region}^{(g)}}{\|E_{region}^{(t)}\| \|E_{region}^{(g)}\|}
+\end{equation}
+Em sử dụng một bộ phân loại quyết định (Decision Classifier) để tích hợp các độ tương đồng thành phần thành điểm số xác thực cuối cùng $Score_{verify}$:
+\begin{equation}
+    Score_{verify} = \alpha_1 S_{upper} + \alpha_2 S_{middle} + \alpha_3 S_{lower} + \beta S_{dynamic}
+\end{equation}
+Trong đó các trọng số $\alpha_1, \alpha_2, \alpha_3$ được điều chỉnh tự động dựa trên nhật ký trị liệu của khách hàng hoặc kết quả của thuật toán tự động nhận diện khẩu trang (mask detection). Khi phát hiện khách hàng đeo khẩu trang che khuất vùng trung và hạ mặt, hệ thống tự động gán trọng số của các vùng bị che khuất về không ($\alpha_2 \approx 0, \alpha_3 \approx 0$). Điểm số xác thực lúc này sẽ tự động phân phối lại và phụ thuộc hoàn toàn vào phân vùng không bị che khuất ở thượng mặt $S_{upper}$ kết hợp với đặc trưng động vùng mắt $S_{dynamic}$:
+\begin{equation}
+    Score_{verify} = \alpha_1 S_{upper} + \beta S_{dynamic}
+\end{equation}
+Với điều kiện chuẩn hóa lại trọng số còn lại: $\alpha_1 + \beta = 1.0$. Việc áp dụng cơ chế thích ứng động này giúp duy trì độ chính xác nhận diện vượt trội ngay cả trong trạng thái che khuất diện rộng bởi khẩu trang y tế, đáp ứng hoàn hảo bài toán thực tế tại các bệnh viện thẩm mỹ, nơi khách hàng bắt buộc phải đeo khẩu trang để bảo vệ vết thương sau phẫu thuật. Nếu $Score_{verify}$ vượt qua ngưỡng thích ứng $\theta_{adapt}$, danh tính khách hàng sẽ được xác nhận thành công.
