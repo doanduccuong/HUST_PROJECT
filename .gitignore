@@ -1,0 +1,35 @@
+# LaTeX temporary/auxiliary files
+*.aux
+*.log
+*.toc
+*.lof
+*.lot
+*.out
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.pdfsync
+*.alg
+*.acr
+*.acn
+*.bbl
+*.blg
+*.glg
+*.glo
+*.gls
+*.ist
+*.mp
+*.run.xml
+*-blx.bib
+
+# macOS files
+.DS_Store
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
