@@ -1,6 +1,101 @@
-\section*{CHƯƠNG 3. PHƯƠNG PHÁP NGHIÊN CỨU VÀ THIẾT KẾ HỆ THỐNG}
-\addcontentsline{toc}{section}{\numberline{}CHƯƠNG 3. PHƯƠNG PHÁP NGHIÊN CỨU VÀ THIẾT KẾ HỆ THỐNG}
+\section*{CHƯƠNG 3. THIẾT KẾ HỆ THỐNG}
+\addcontentsline{toc}{section}{\numberline{}CHƯƠNG 3. THIẾT KẾ HỆ THỐNG}
 \setcounter{section}{3}
 \setcounter{subsection}{0}
 \setcounter{figure}{0}
 \setcounter{table}{0}
+
+Để hiện thực hóa quy trình phân tích khuôn mặt thích ứng 5 giai đoạn đã đề xuất trong Cơ sở lý thuyết, chương này tập trung mô tả chi tiết thiết kế kiến trúc hệ thống tổng thể. Hệ thống được thiết kế theo hướng mô-đun hóa, phân tách rõ ràng giữa các luồng dữ liệu chuẩn hóa của DeepFace backend và lớp điều khiển thích ứng (Adaptive Wrapper Layer) bên ngoài nhằm tối ưu hóa tính linh hoạt và độ chính xác thực tiễn.
+
+\subsection{Sơ đồ khối hệ thống tổng thể}
+
+Kiến trúc hệ thống nhận dạng khách hàng thích ứng bao gồm 5 khối chức năng chính được mô tả trực quan qua sơ đồ khối dưới đây:
+
+\begin{figure}[H]
+    \centering
+    \usetikzlibrary{shapes.geometric, arrows, positioning}
+    
+    \tikzstyle{startstop} = [rectangle, rounded corners, minimum width=4cm, minimum height=0.8cm, text centered, draw=black, fill=blue!10, font=\bfseries\fontsize{10pt}{12pt}\selectfont]
+    \tikzstyle{process} = [rectangle, minimum width=4cm, minimum height=1.2cm, text centered, draw=black, fill=orange!10, text width=4.5cm, font=\fontsize{9pt}{11pt}\selectfont]
+    \tikzstyle{decision} = [diamond, minimum width=2.5cm, minimum height=0.8cm, text centered, draw=black, fill=green!10, text width=2.2cm, aspect=2, font=\fontsize{9pt}{11pt}\selectfont]
+    \tikzstyle{arrow} = [thick,->,>=stealth]
+    
+    \begin{tikzpicture}[node distance=1.5cm, auto]
+        % Nodes
+        \node (input) [startstop] {Luồng Video / Ảnh Đầu Vào};
+        
+        \node (detect) [process, below=0.6cm of input] {\textbf{(1) Giai đoạn DETECT} \\ Phát hiện khuôn mặt và các mốc giải phẫu sơ bộ};
+        
+        \node (mask_check) [decision, below=0.6cm of detect] {Đeo khẩu trang?};
+        
+        \node (mask_mode) [process, below left=0.8cm and 1.5cm of mask_check] {\textbf{Chế độ Thích ứng} \\ \textbf{(2) Giai đoạn ALIGN}: \\ Căn chỉnh có trọng số ($w_i = 0$) \\ \textbf{(3) Giai đoạn NORMALIZE}: \\ Lọc song phương da thực lộ};
+        
+        \node (normal_mode) [process, below right=0.8cm and 1.5cm of mask_check] {\textbf{Chế độ Thường} \\ \textbf{(2) Giai đoạn ALIGN}: \\ Căn chỉnh Affine mắt chuẩn \\ \textbf{(3) Giai đoạn NORMALIZE}: \\ Lọc mịn toàn khuôn mặt};
+        
+        \node (extract) [process, below=4.2cm of mask_check] {\textbf{(4) Giai đoạn REPRESENT} \\ Trích xuất song song đặc trưng \\ - Tĩnh thượng mặt $E_{upper}$ (ArcFace) \\ - Động lực học cơ mắt $E_{dynamic}$ (FACS)};
+        
+        \node (fusion) [process, below=0.6cm of extract] {\textbf{(5) Giai đoạn VERIFY} \\ Quyết định đa tầng thích ứng \\ $Score = \alpha_1 S_{upper} + \beta S_{dynamic}$};
+        
+        \node (verify) [decision, below=0.6cm of fusion] {Score $\ge \theta_{adapt}$?};
+        
+        \node (success) [startstop, left=1.5cm of verify] {Xác thực Thành công};
+        \node (fail) [startstop, right=1.5cm of verify] {Từ chối Xác thực};
+        
+        % Connections
+        \draw [arrow] (input) -- (detect);
+        \draw [arrow] (detect) -- (mask_check);
+        \draw [arrow] (mask_check) -| node[near start, anchor=south] {Có} (mask_mode);
+        \draw [arrow] (mask_check) -| node[near start, anchor=south] {Không} (normal_mode);
+        \draw [arrow] (mask_mode) |- (extract);
+        \draw [arrow] (normal_mode) |- (extract);
+        \draw [arrow] (extract) -- (fusion);
+        \draw [arrow] (fusion) -- (verify);
+        \draw [arrow] (verify) -- node[anchor=south] {Có} (success);
+        \draw [arrow] (verify) -- node[anchor=south] {Không} (fail);
+    \end{tikzpicture}
+    \caption{Sơ đồ khối kiến trúc hệ thống nhận dạng thích ứng tích hợp quy trình 5 giai đoạn.}
+    \label{fig:block_diagram}
+\end{figure}
+
+\subsection{Mô tả chức năng chi tiết của các khối kiến trúc}
+
+Để làm rõ phương pháp vận hành cơ học của hệ thống, chức năng xử lý và dữ liệu chuyển giao giữa các khối được định nghĩa như sau:
+
+\subsubsection{Khối Đầu Vào (Input Block)}
+Khối này chịu trách nhiệm thu nhận luồng video trực tiếp từ camera giám sát hoặc tệp tin ảnh tĩnh của khách hàng. Định dạng dữ liệu thô đầu vào được số hóa dưới dạng ma trận điểm ảnh không gian ba chiều BGR:
+$$\mathbf{I}_{raw} \in \mathbb{R}^{H \times W \times 3}$$
+
+\subsubsection{Khối Phát Hiện và Phân Tích Che Khuất (Detection \& Occlusion Block)}
+Khối này tích hợp hai bộ xử lý song song:
+\begin{enumerate}
+    \item \textbf{Bộ dò RetinaFace}: Thực hiện khoanh vùng khuôn mặt dạng Bounding Box và trích xuất sơ bộ 5 điểm mốc giải phẫu chính (hai mắt, mũi, hai khóe miệng).
+    \item \textbf{Bộ phân loại khẩu trang (MobileNetV2 Mask Classifier)}: Nhận diện trạng thái đeo khẩu trang của khách hàng thông qua chỉ số xác suất $P_{mask} \in [0, 1]$. Nếu $P_{mask} > 0.80$, hệ thống tự động kích hoạt **Chế độ Thích ứng**, ngược lại sẽ vận hành ở **Chế độ Thường**.
+\end{enumerate}
+
+\subsubsection{Khối Tiền Xử Lý Thích Ứng (Adaptive Preprocessing Block)}
+*   \textbf{Ở Chế độ Thường}: Áp dụng phép biến đổi Affine xoay thẳng mặt dựa trên trục mắt chuẩn của DeepFace, thực hiện cân bằng sáng CLAHE toàn phần và áp dụng bộ lọc Bilateral Filter mịn da trên toàn bộ ma trận ảnh.
+*   \textbf{Ở Chế độ Thích ứng}: Gọi MediaPipe Face Mesh trích xuất 468 điểm mốc mật độ cao. Gán trọng số $w_i = 0$ cho các điểm bị che và $w_i = 1.0$ cho các mốc bất biến (vùng mắt/trán). Thực hiện căn chỉnh Affine tối ưu hóa Procrustes có trọng số và lọc mịn Bilateral Filter khoanh vùng động chỉ trên da thực lộ diện để triệt tiêu nhiễu kết cấu.
+
+\subsubsection{Khối Trích Xuất Đặc Trưng Cục Bộ và Hành Vi (Feature Extraction Block)}
+Khối này chia nhỏ ma trận ảnh đã chuẩn hóa thành các phân vùng độc lập và thực hiện trích xuất song song:
+\begin{enumerate}
+    \item \textbf{Đặc trưng tĩnh đa phân vùng (Static Encoder)}: Sử dụng ArcFace backend của DeepFace trích xuất độc lập vector đặc trưng $E_{upper} \in \mathbb{R}^{512}$ cho vùng thượng mặt (mắt, mày, trán). Vùng trung và hạ mặt được bỏ qua để loại bỏ hoàn toàn đặc trưng giả từ khẩu trang y tế.
+    \item \textbf{Đặc trưng động lực học biểu cảm (Dynamic FACS Encoder)}: Đo lường chuỗi thời gian chuyển động cơ mắt/chân mày qua các Action Units động trong luồng video 3 giây để sinh ra đặc trưng hành vi $E_{dynamic}$.
+\end{enumerate}
+
+\subsubsection{Khối Quyết Định Đa Tầng (Adaptive Decision Fusion Block)}
+Khối này tính toán độc lập khoảng cách Cosine tĩnh $S_{upper}$ và tương đồng hành vi $S_{dynamic}$ với dữ liệu đăng ký gốc lưu trữ trong cơ sở dữ liệu. Lớp thích ứng thực hiện điều phối trọng số động:
+$$Score_{verify} = \alpha_1 S_{upper} + \beta S_{dynamic} \quad (\text{với } \alpha_1 + \beta = 1.0)$$
+Điểm số cuối cùng được đối chiếu trực tiếp với ngưỡng thích ứng $\theta_{adapt}$. Nếu vượt qua ngưỡng, hệ thống kích hoạt \textbf{Khối Đầu Ra} xác nhận danh tính thành công và mở khóa thông tin tài khoản khách hàng, ngược lại sẽ phát ra cảnh báo từ chối xác thực.
+
+\subsection{Sự tương thích giữa Sơ đồ kiến trúc và Quy trình thích ứng 5 giai đoạn}
+
+Để minh chứng tính đúng đắn và khả thi của thiết kế hệ thống, sơ đồ khối kiến trúc tại Hình \ref{fig:block_diagram} được xây dựng để hiện thực hóa trực tiếp quy trình phân tích thích ứng 5 giai đoạn đã đề xuất trong Chương 2. Mối liên hệ hữu cơ giữa các khối hệ thống và các giai đoạn xử lý được cụ thể hóa như sau:
+
+\begin{enumerate}
+    \item \textbf{Giai đoạn 1 - Phát hiện (Detect)}: Được vận hành trực tiếp bởi \textbf{Khối Phát Hiện và Phân Tích Che Khuất}. Khối này sử dụng RetinaFace để trích xuất vị trí khuôn mặt và MobileNetV2 để phân tích che khuất (nhận diện đeo khẩu trang), đảm bảo phát hiện bền vững trước các tác nhân cản trở vật lý.
+    \item \textbf{Giai đoạn 2 - Căn chỉnh (Align)}: Được hiện thực hóa trong \textbf{Khối Tiền Xử Lý Thích Ứng}. Khi kích hoạt Chế độ Thích ứng, hệ thống chạy thuật toán tối ưu hóa ma trận Affine Procrustes có trọng số (Weighted Procrustes) để căn xoay thẳng đứng khuôn mặt mà không bị lệch trục giải phẫu.
+    \item \textbf{Giai đoạn 3 - Chuẩn hóa (Normalize)}: Được vận hành bởi bộ xử lý chuẩn hóa tích hợp trong \textbf{Khối Tiền Xử Lý Thích Ứng}. Giai đoạn này áp dụng CLAHE để ổn định độ tương phản và Bilateral Filter khoanh vùng động trên da thực nhằm loại bỏ triệt để nhiễu kết cấu (vết sưng, đỏ da sau phẫu thuật).
+    \item \textbf{Giai đoạn 4 - Biểu diễn đặc trưng (Represent)}: Được đảm nhiệm bởi \textbf{Khối Trích Xuất Đặc Trưng Cục Bộ và Hành Vi}. Hệ thống thực hiện cắt phân vùng để trích xuất tĩnh cục bộ vùng mắt/trán $E_{upper}$ (ArcFace) và trích xuất động chuỗi hành động cơ mắt $E_{dynamic}$ (FACS), giải quyết triệt để lỗi lệch vector toàn cục trong không gian latent space.
+    \item \textbf{Giai đoạn 5 - Xác thực (Verify)}: Được quyết định bởi \textbf{Khối Quyết Định Đa Tầng}. Thực hiện tính toán tương đồng và áp dụng mô hình phân bổ trọng số thích ứng tự động (triệt tiêu trọng số vùng bị che khuất $\alpha_2 \approx 0, \alpha_3 \approx 0$) trước khi đối chiếu với ngưỡng thích ứng $\theta_{adapt}$ để đưa ra kết quả cuối cùng.
+\end{enumerate}
