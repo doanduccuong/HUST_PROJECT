@@ -29,12 +29,12 @@
 \titlespacing*{\paragraph}{0pt}{10pt}{0pt} % Heading 4
 \titleformat*{\paragraph}{\fontsize{13pt}{15.6pt}\selectfont \itshape}
 
-\renewcommand{\figurename}{\fontsize{12pt}{0pt}\selectfont \bfseries Figure}
+\renewcommand{\figurename}{\fontsize{12pt}{0pt}\selectfont \bfseries Hình}
 \renewcommand{\thefigure}{\thesection.\arabic{figure}}
 \usepackage[font=bf]{caption}
 \captionsetup[figure]{labelsep=space}
 
-\renewcommand{\tablename}{\fontsize{12pt}{0pt}\selectfont \bfseries Table}
+\renewcommand{\tablename}{\fontsize{12pt}{0pt}\selectfont \bfseries Bảng}
 \renewcommand{\thetable}{\thesection.\arabic{table}}
 \captionsetup[table]{labelsep=space}
 
@@ -56,10 +56,10 @@
 \newtheorem{lemma}[theorem]{Lemma}
 
 \usepackage{lipsum} % Thư viện tạo chữ linh tinh.
-\renewcommand{\contentsname}{TABLE OF CONTENTS}
-\renewcommand{\listfigurename}{LIST OF FIGURES}
-\renewcommand{\listtablename}{LIST OF TABLES}
-\renewcommand{\refname}{REFERENCES}
+\renewcommand{\contentsname}{MỤC LỤC}
+\renewcommand{\listfigurename}{DANH MỤC HÌNH VẼ}
+\renewcommand{\listtablename}{DANH MỤC BẢNG BIỂU}
+\renewcommand{\refname}{TÀI LIỆU THAM KHẢO}
 
 \usepackage[unicode]{hyperref}
 \usepackage{colortbl}
@@ -79,6 +79,7 @@
 }
 
 \begin{document}
+\pagenumbering{roman}
 
 \input{Cover page} 
 
@@ -96,16 +97,16 @@
 \input{Abbreviations} 
 
 {\let\oldnumberline\numberline
-\renewcommand{\numberline}{Figure~\oldnumberline}
+\renewcommand{\numberline}{Hình~\oldnumberline}
 \listoffigures} 
-\phantomsection\addcontentsline{toc}{section}{\numberline {} LIST OF FIGURES}
+\phantomsection\addcontentsline{toc}{section}{\numberline {} DANH MỤC HÌNH VẼ}
 \newpage
 
  %Tạo danh mục bảng biểu.
 {\let\oldnumberline\numberline
-\renewcommand{\numberline}{Table~\oldnumberline}
+\renewcommand{\numberline}{Bảng~\oldnumberline}
 \listoftables}
-\phantomsection\addcontentsline{toc}{section}{\numberline {} LIST OF TABLES}
+\phantomsection\addcontentsline{toc}{section}{\numberline {} DANH MỤC BẢNG BIỂU}
 \newpage
 
 \input{Abstract} 
@@ -125,7 +126,7 @@
 
 
 
-\phantomsection\addcontentsline{toc}{section}{\numberline {}REFERENCES}
+\phantomsection\addcontentsline{toc}{section}{\numberline {}TÀI LIỆU THAM KHẢO}
 % \bibliographystyle{IEEEtran}
 % \bibliography{References}
 \begin{thebibliography}{00}
