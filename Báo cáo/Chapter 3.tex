@@ -22,7 +22,7 @@ Kiến trúc hệ thống nhận dạng khách hàng thích ứng bao gồm 5 kh
     
     \begin{tikzpicture}[node distance=1.5cm, auto]
         % Nodes
-        \node (input) [startstop] {Luồng Video / Ảnh Đầu Vào};
+        \node (input) [startstop] {Ảnh Chân Dung Đầu Vào};
         
         \node (detect) [process, below=0.6cm of input] {\textbf{(1) Giai đoạn DETECT} \\ Phát hiện khuôn mặt và các mốc giải phẫu sơ bộ};
         
@@ -62,31 +62,64 @@ Kiến trúc hệ thống nhận dạng khách hàng thích ứng bao gồm 5 kh
 Để làm rõ phương pháp vận hành cơ học của hệ thống, chức năng xử lý và dữ liệu chuyển giao giữa các khối được định nghĩa như sau:
 
 \subsubsection{Khối Đầu Vào (Input Block)}
-Khối này chịu trách nhiệm thu nhận luồng video trực tiếp từ camera giám sát hoặc tệp tin ảnh tĩnh của khách hàng. Định dạng dữ liệu thô đầu vào được số hóa dưới dạng ma trận điểm ảnh không gian ba chiều BGR:
+Khối này chịu trách nhiệm thu nhận tệp tin ảnh tĩnh chân dung của khách hàng tải lên. Định dạng dữ liệu thô đầu vào được số hóa dưới dạng ma trận điểm ảnh không gian ba chiều BGR:
 $$\mathbf{I}_{raw} \in \mathbb{R}^{H \times W \times 3}$$
 
 \subsubsection{Khối Phát Hiện và Phân Tích Che Khuất (Detection \& Occlusion Block)}
 Khối này tích hợp hai bộ xử lý song song:
 \begin{enumerate}
     \item \textbf{Bộ dò RetinaFace}: Thực hiện khoanh vùng khuôn mặt dạng Bounding Box và trích xuất sơ bộ 5 điểm mốc giải phẫu chính (hai mắt, mũi, hai khóe miệng).
-    \item \textbf{Bộ phân loại khẩu trang (MobileNetV2 Mask Classifier)}: Nhận diện trạng thái đeo khẩu trang của khách hàng thông qua chỉ số xác suất $P_{mask} \in [0, 1]$. Nếu $P_{mask} > 0.80$, hệ thống tự động kích hoạt **Chế độ Thích ứng**, ngược lại sẽ vận hành ở **Chế độ Thường**.
+    \item \textbf{Bộ phân loại khẩu trang (MobileNetV2 Mask Classifier)}: Nhận diện trạng thái đeo khẩu trang của khách hàng thông qua chỉ số xác suất $P_{mask} \in [0, 1]$. Nếu $P_{mask} > 0.80$, hệ thống tự động kích hoạt \textbf{Chế độ Thích ứng}, ngược lại sẽ vận hành ở \textbf{Chế độ Thường}.
 \end{enumerate}
 
 \subsubsection{Khối Tiền Xử Lý Thích Ứng (Adaptive Preprocessing Block)}
-*   \textbf{Ở Chế độ Thường}: Áp dụng phép biến đổi Affine xoay thẳng mặt dựa trên trục mắt chuẩn của DeepFace, thực hiện cân bằng sáng CLAHE toàn phần và áp dụng bộ lọc Bilateral Filter mịn da trên toàn bộ ma trận ảnh.
-*   \textbf{Ở Chế độ Thích ứng}: Gọi MediaPipe Face Mesh trích xuất 468 điểm mốc mật độ cao. Gán trọng số $w_i = 0$ cho các điểm bị che và $w_i = 1.0$ cho các mốc bất biến (vùng mắt/trán). Thực hiện căn chỉnh Affine tối ưu hóa Procrustes có trọng số và lọc mịn Bilateral Filter khoanh vùng động chỉ trên da thực lộ diện để triệt tiêu nhiễu kết cấu.
+\begin{itemize}
+    \item \textbf{Ở Chế độ Thường}: Áp dụng phép biến đổi Affine xoay thẳng mặt dựa trên trục mắt chuẩn của DeepFace, thực hiện cân bằng sáng CLAHE toàn phần và áp dụng bộ lọc Bilateral Filter mịn da trên toàn bộ ma trận ảnh.
+    \item \textbf{Ở Chế độ Thích ứng}: Gọi MediaPipe Face Mesh trích xuất 468 điểm mốc mật độ cao. Gán trọng số $w_i = 0$ cho các điểm bị che và $w_i = 1.0$ cho các mốc bất biến (vùng mắt/trán). Thực hiện căn chỉnh Affine tối ưu hóa Procrustes có trọng số và lọc mịn Bilateral Filter khoanh vùng động chỉ trên da thực lộ diện để triệt tiêu nhiễu kết cấu.
+\end{itemize}
 
 \subsubsection{Khối Trích Xuất Đặc Trưng Cục Bộ và Hành Vi (Feature Extraction Block)}
 Khối này chia nhỏ ma trận ảnh đã chuẩn hóa thành các phân vùng độc lập và thực hiện trích xuất song song:
 \begin{enumerate}
     \item \textbf{Đặc trưng tĩnh đa phân vùng (Static Encoder)}: Sử dụng ArcFace backend của DeepFace trích xuất độc lập vector đặc trưng $E_{upper} \in \mathbb{R}^{512}$ cho vùng thượng mặt (mắt, mày, trán). Vùng trung và hạ mặt được bỏ qua để loại bỏ hoàn toàn đặc trưng giả từ khẩu trang y tế.
-    \item \textbf{Đặc trưng động lực học biểu cảm (Dynamic FACS Encoder)}: Đo lường chuỗi thời gian chuyển động cơ mắt/chân mày qua các Action Units động trong luồng video 3 giây để sinh ra đặc trưng hành vi $E_{dynamic}$.
+    \item \textbf{Đặc trưng cơ mặt (FACS Encoder)}: Đo lường các Action Units biểu cảm cơ mắt/chân mày và miệng thông qua các điểm mốc hình học để sinh ra đặc trưng biểu cảm $E_{dynamic}$.
 \end{enumerate}
 
 \subsubsection{Khối Quyết Định Đa Tầng (Adaptive Decision Fusion Block)}
 Khối này tính toán độc lập khoảng cách Cosine tĩnh $S_{upper}$ và tương đồng hành vi $S_{dynamic}$ với dữ liệu đăng ký gốc lưu trữ trong cơ sở dữ liệu. Lớp thích ứng thực hiện điều phối trọng số động:
 $$Score_{verify} = \alpha_1 S_{upper} + \beta S_{dynamic} \quad (\text{với } \alpha_1 + \beta = 1.0)$$
 Điểm số cuối cùng được đối chiếu trực tiếp với ngưỡng thích ứng $\theta_{adapt}$. Nếu vượt qua ngưỡng, hệ thống kích hoạt \textbf{Khối Đầu Ra} xác nhận danh tính thành công và mở khóa thông tin tài khoản khách hàng, ngược lại sẽ phát ra cảnh báo từ chối xác thực.
+
+\subsection{Mô-đun phân tích thuộc tính và định lượng sinh học khách hàng (Aesthetic Analysis Module)}
+
+Bên cạnh bài toán xác thực danh tính thích ứng, hệ thống của đồ án được cải tiến và chỉnh sửa để tích hợp thêm Mô-đun phân tích thuộc tính và định lượng sinh học khách hàng (Aesthetic Analysis Module). Mô-đun này đóng vai trò cốt lõi trong việc thấu hiểu trải nghiệm khách hàng và hỗ trợ chuyên môn cho các bác sĩ thẩm mỹ tại cơ sở trị liệu thông qua các thành phần xử lý sau:
+
+\subsubsection{Phân tích thuộc tính nhân khẩu học và biểu cảm khuôn mặt}
+Mô-đun thực hiện nhận diện và trích xuất đồng thời các thuộc tính nhân khẩu học tĩnh và biểu cảm khuôn mặt:
+\begin{itemize}
+    \item \textbf{Giới tính (Gender) và Tuổi (Age)}: Ước lượng dựa trên các tỷ lệ hình học giữa các điểm mốc cố định trên xương mặt (như tỷ lệ chiều cao trán, khoảng cách hai gò má, chiều dài xương quai hàm).
+    \item \textbf{Chủng tộc (Race)}: Phân loại thành 6 nhóm chủng tộc chính dựa trên việc phân tích không gian màu và phân phối phân phổ màu da trong không gian LAB.
+    \item \textbf{Biểu cảm cảm xúc (Facial Expression)}: Phân loại khuôn mặt thành 7 biểu cảm cốt lõi: \textit{angry, fear, neutral, sad, disgust, happy, surprise} thông qua việc phân tích vector đặc trưng động lực học FACS từ sự co dãn của các nhóm cơ mặt chính.
+\end{itemize}
+
+Nhằm nâng cao tính chính xác và tối ưu hóa tài nguyên cho hệ thống trong bài toán phân tích trải nghiệm khách hàng tại cơ sở trị liệu, thay vì chỉ sử dụng các mô hình mặc định trong thư viện DeepFace \cite{deepface_framework}, đồ án đã tự thiết lập quy trình huấn luyện lại (fine-tuning) một mô hình học sâu chuyên biệt cho nhận diện cảm xúc khuôn mặt. Mô hình này sử dụng kiến trúc mạng \textbf{MobileNetV2} \cite{mobilenetv2} làm mạng xương sống (backbone) trích xuất đặc trưng với các trọng số đã được huấn luyện trước trên tập dữ liệu ImageNet, kết hợp với một đầu phân loại tuyến tính mới tương thích với 7 lớp cảm xúc mục tiêu. Quá trình huấn luyện sử dụng tập dữ liệu biểu cảm khuôn mặt chuẩn \textbf{FER2013} \cite{fer2013} chứa hơn 35.000 hình ảnh. Mô hình sau khi huấn luyện đạt độ chính xác cao được chuyển đổi sang định dạng \textbf{ONNX} để tích hợp trực tiếp vào hệ thống runtime của Go backend, đảm bảo tốc độ suy luận nhanh dưới 10ms trên CPU và giảm thiểu sự phụ thuộc vào các thư viện Python nặng nề.
+
+\subsubsection{Định lượng sinh học trải nghiệm và phục hồi cơ mặt}
+Để lượng hóa dữ liệu biểu cảm phục vụ bài toán nghiệp vụ y khoa thẩm mỹ, hệ thống đề xuất hai công thức tính toán chỉ số sinh học:
+\begin{enumerate}
+    \item \textbf{Chỉ số hài lòng khách hàng (Customer Satisfaction Score - $CS$)}: Điểm số này đo lường phản hồi cảm xúc thực tế của khách hàng khi đánh giá kết quả trị liệu, được tính toán từ phân phối xác suất của 7 trạng thái cảm xúc:
+    \begin{equation}
+        CS = 100 \times \max\left(0, \min\left(1, P_{happy} + 0.7 P_{neutral} + 0.3 P_{surprise} - 0.5 P_{sad} - 0.8 P_{angry} - 0.6 P_{fear} - 0.4 P_{disgust}\right)\right)
+    \end{equation}
+    \item \textbf{Tỉ lệ đối xứng cơ mặt (Muscle Symmetry Rate - $MSR$)}: Đo lường mức độ cân đối giải phẫu phục vụ việc theo dõi phục hồi sau phẫu thuật hoặc hạn chế vận động cơ mặt (như sau khi tiêm botox/filler). Chỉ số này tính toán dựa trên độ lệch khoảng cách hình học của $N$ nhóm cơ biểu cảm đối xứng trái/phải:
+    \begin{equation}
+        MSR = 1.0 - \frac{1}{N} \sum_{i=1}^{N} \frac{|d_{left}^{(i)} - d_{right}^{(i)}|}{d_{left}^{(i)} + d_{right}^{(i)}}
+    \end{equation}
+    Trong đó $d_{left}^{(i)}$ và $d_{right}^{(i)}$ là khoảng cách từ các điểm mốc trung tâm (sống mũi, nhân trung) đến các mốc đối xứng giải phẫu ở nửa mặt trái và phải (ví dụ: khóe mắt ngoài, đỉnh chân mày, khóe miệng). Chỉ số $MSR \in [0, 1]$, với $MSR \approx 1.0$ biểu thị cơ mặt hoàn toàn phục hồi cân đối và tự nhiên.
+\end{enumerate}
+
+\subsubsection{Hệ khuyến nghị liệu trình tự động (Personalized Treatment Recommendation)}
+Dựa trên kết quả phân tích thuộc tính (tuổi, giới tính), chỉ số sưng tấy/bầm tím tạm thời (đo bằng hiệu số ma trận ảnh gốc và ma trận ảnh sau lọc Bilateral) và chỉ số phục hồi $MSR$, hệ thống tự động đưa ra các khuyến nghị chăm sóc da hoặc liệu trình điều trị thẩm mỹ phục hồi cá nhân hóa (ví dụ: chỉ định đắp mặt nạ làm dịu da nếu sưng tấy cao, hoặc đề xuất dặm lại filler nếu chỉ số đối xứng $MSR < 0.90$ sau 2 tuần).
 
 \subsection{Sự tương thích giữa Sơ đồ kiến trúc và Quy trình thích ứng 5 giai đoạn}
 
@@ -96,6 +129,66 @@ $$Score_{verify} = \alpha_1 S_{upper} + \beta S_{dynamic} \quad (\text{với } \
     \item \textbf{Giai đoạn 1 - Phát hiện (Detect)}: Được vận hành trực tiếp bởi \textbf{Khối Phát Hiện và Phân Tích Che Khuất}. Khối này sử dụng RetinaFace để trích xuất vị trí khuôn mặt và MobileNetV2 để phân tích che khuất (nhận diện đeo khẩu trang), đảm bảo phát hiện bền vững trước các tác nhân cản trở vật lý.
     \item \textbf{Giai đoạn 2 - Căn chỉnh (Align)}: Được hiện thực hóa trong \textbf{Khối Tiền Xử Lý Thích Ứng}. Khi kích hoạt Chế độ Thích ứng, hệ thống chạy thuật toán tối ưu hóa ma trận Affine Procrustes có trọng số (Weighted Procrustes) để căn xoay thẳng đứng khuôn mặt mà không bị lệch trục giải phẫu.
     \item \textbf{Giai đoạn 3 - Chuẩn hóa (Normalize)}: Được vận hành bởi bộ xử lý chuẩn hóa tích hợp trong \textbf{Khối Tiền Xử Lý Thích Ứng}. Giai đoạn này áp dụng CLAHE để ổn định độ tương phản và Bilateral Filter khoanh vùng động trên da thực nhằm loại bỏ triệt để nhiễu kết cấu (vết sưng, đỏ da sau phẫu thuật).
-    \item \textbf{Giai đoạn 4 - Biểu diễn đặc trưng (Represent)}: Được đảm nhiệm bởi \textbf{Khối Trích Xuất Đặc Trưng Cục Bộ và Hành Vi}. Hệ thống thực hiện cắt phân vùng để trích xuất tĩnh cục bộ vùng mắt/trán $E_{upper}$ (ArcFace) và trích xuất động chuỗi hành động cơ mắt $E_{dynamic}$ (FACS), giải quyết triệt để lỗi lệch vector toàn cục trong không gian latent space.
+    \item \textbf{Giai đoạn 4 - Biểu diễn đặc trưng (Represent)}: Được đảm nhiệm bởi \textbf{Khối Trích Xuất Đặc Trưng Cục Bộ và Hành Vi}. Hệ thống thực hiện cắt phân vùng để trích xuất tĩnh cục bộ vùng mắt/trán $E_{upper}$ (ArcFace) và trích xuất đặc trưng cơ mặt $E_{dynamic}$ (FACS), giải quyết triệt để lỗi lệch vector toàn cục trong không gian latent space.
     \item \textbf{Giai đoạn 5 - Xác thực (Verify)}: Được quyết định bởi \textbf{Khối Quyết Định Đa Tầng}. Thực hiện tính toán tương đồng và áp dụng mô hình phân bổ trọng số thích ứng tự động (triệt tiêu trọng số vùng bị che khuất $\alpha_2 \approx 0, \alpha_3 \approx 0$) trước khi đối chiếu với ngưỡng thích ứng $\theta_{adapt}$ để đưa ra kết quả cuối cùng.
 \end{enumerate}
+
+\subsection{Triển khai Quy trình Huấn luyện Mô hình Học sâu (deepfacev2/train\_pipeline)}
+
+Nhằm nâng cao tính tự chủ công nghệ và tạo dấu ấn cá nhân hóa cho đồ án, em đã triển khai gói mã nguồn Python \texttt{train\_pipeline} để tự huấn luyện mô hình phân loại cảm xúc khuôn mặt dựa trên mạng MobileNetV2 và bộ dữ liệu chuẩn FER2013 \cite{fer2013}. Quy trình được mô-đun hóa thành 5 giai đoạn như sau:
+
+\begin{enumerate}
+    \item \textbf{Giai đoạn 1 (Tải dữ liệu tự động)}: Viết mã nguồn tải trực tiếp bộ dữ liệu FER2013 từ Kaggle thông qua thư viện \texttt{kagglehub}. Sau khi sao chép thành công vào thư mục \texttt{dataset/}, hệ thống tự động dọn dẹp các tệp tải tạm thời và tự động xóa file tải dữ liệu để tối ưu hóa dung lượng lưu trữ của máy chủ.
+    \item \textbf{Giai đoạn 2 (Tiền xử lý và Data Loader - stage2\_prep.py)}: Áp dụng các phép biến đổi ảnh (transforms) bao gồm resize ảnh về kích thước $112 \times 112$ pixel để tối ưu hóa tốc độ, thực hiện lật ngang ngẫu nhiên (RandomHorizontalFlip), xoay ảnh nhẹ (RandomRotation) tối đa 15 độ, và điều chỉnh độ tương phản/độ sáng (ColorJitter) để tăng cường dữ liệu (Data Augmentation) chống quá khớp. Dữ liệu sau đó được chuẩn hóa theo phân phối ImageNet và nạp qua đối tượng PyTorch \texttt{DataLoader} với batch\_size = 64.
+    \item \textbf{Giai đoạn 3 (Khởi tạo Mô hình - stage3\_model.py)}: Nạp cấu trúc mạng MobileNetV2 \cite{mobilenetv2} đã được tiền huấn luyện (pre-trained) trên tập ImageNet từ thư viện \texttt{torchvision.models}. Lớp phân loại cuối cùng (classifier head) của MobileNetV2 nguyên bản vốn thực hiện ánh xạ từ không gian đặc trưng ẩn $d = 1280$ chiều sang 1000 lớp của ImageNet. Để thích ứng với bài toán phân loại biểu cảm cảm xúc của đồ án, lớp này được thay thế bằng một lớp liên kết đầy đủ (Fully Connected layer) mới thực hiện ánh xạ tuyến tính $\mathbf{y} = \mathbf{W} \mathbf{f} + \mathbf{b}$, trong đó $\mathbf{W} \in \mathbb{R}^{7 \times 1280}$ là ma trận trọng số mới, $\mathbf{b} \in \mathbb{R}^7$ là vector sai số (bias), và $\mathbf{y} \in \mathbb{R}^7$ biểu thị vector điểm số (logits) của 7 lớp cảm xúc mục tiêu trong bộ dữ liệu FER2013.
+    \item \textbf{Giai đoạn 4 (Huấn luyện - stage4\_train.py)}: Thiết lập hàm mất mát Cross-Entropy Loss và bộ tối ưu Adam Optimizer với learning\_rate = 0.0005. Quá trình huấn luyện được tăng tốc trên phần cứng đồ họa Apple Silicon GPU (MPS) qua 10 epochs. File trọng số tối ưu nhất được tự động ghi lại tại \texttt{best\_emotion\_model.pth} và biểu đồ lịch sử huấn luyện được vẽ và lưu thành tệp ảnh \texttt{training\_history.png}.
+    \item \textbf{Giai đoạn 5 (Xuất định dạng ONNX - stage5\_export.py)}: Nạp trọng số PyTorch từ file \texttt{.pth} và thực hiện chuyển đổi mô hình sang đồ thị tĩnh ONNX thông qua phương pháp theo dấu (Tracing) với dữ liệu giả lập \texttt{dummy\_input} kích thước $(1, 3, 112, 112)$. Cấu hình \texttt{dynamic\_axes} được áp dụng cho chiều batch\_size để cho phép suy luận linh hoạt nhiều ảnh cùng lúc.
+\end{enumerate}
+
+\subsection{Triển khai Kiến trúc Phân lớp Go Backend (Layered Architecture)}
+
+Backend của hệ thống được xây dựng bằng ngôn ngữ Golang và cấu trúc theo mô hình Kiến trúc Phân lớp (Layered Architecture) để đảm bảo tính phân tách và dễ bảo trì. Chi tiết vai trò của các lớp được mô tả trong Bảng \ref{tab:be_layers}:
+
+\begin{table}[H]
+    \centering
+    \caption{Phân tách vai trò các thành phần trong Kiến trúc Phân lớp của Go Backend.}
+    \label{tab:be_layers}
+    \fontsize{9pt}{11pt}\selectfont
+    \begin{tabular}{|l|l|p{7.5cm}|}
+        \hline
+        \textbf{Thư mục trên đĩa} & \textbf{Tầng kiến trúc} & \textbf{Vai trò và trách nhiệm trong hệ thống} \\ \hline
+        \texttt{cmd/server/} & Tầng khởi động & Thiết lập cổng chạy, cấu hình các endpoint định tuyến Router Chi, khởi tạo/hủy session ONNX. \\ \hline
+        \texttt{internal/app/config/} & Tầng cấu hình & Nạp tập trung các biến môi trường (\texttt{.env}) gồm thông tin cổng mạng, đường dẫn mô hình. \\ \hline
+        \texttt{internal/app/dto/} & Tầng DTO & Định nghĩa các cấu trúc trao đổi dữ liệu riêng biệt cho các tác vụ dò tìm và đối sánh khuôn mặt. \\ \hline
+        \texttt{internal/app/handler/} & Tầng điều khiển & Xử lý giao tiếp HTTP/WebSocket, giải mã dữ liệu nhị phân của ảnh, tích hợp CORS Middleware. \\ \hline
+        \texttt{internal/app/service/} & Tầng nghiệp vụ & Nạp trực tiếp mô hình ONNX qua thư viện Go binding để suy luận nhanh, tính toán chỉ số $CS$ và $MSR$. \\ \hline
+    \end{tabular}
+\end{table}
+
+\begin{itemize}
+    \item \textbf{Lớp Cấu hình (Config Layer)}: Đọc các biến môi trường thông qua tệp \texttt{.env} để lấy cổng chạy (Port) và đường dẫn file mô hình ONNX, tránh việc fix cứng đường dẫn trong mã nguồn.
+    \item \textbf{Lớp Trao đổi Dữ liệu (DTO Layer)}: Định nghĩa các cấu trúc dữ liệu JSON đầu vào/đầu ra rõ ràng để lọc và kiểm tra tính hợp lệ của dữ liệu trước khi đi vào hệ thống.
+    \item \textbf{Lớp Điều khiển (Handler Layer)}: Tiếp nhận các request HTTP từ Client, giải mã tệp ảnh và gọi lớp Service xử lý. Handler này cũng tích hợp bộ lọc CORS Middleware để cho phép cổng Frontend Next.js (\texttt{localhost:3000}) gọi API tài nguyên chéo một cách an toàn.
+    \item \textbf{Lớp Dịch vụ (Service Layer)}: Chứa toàn bộ logic nghiệp vụ. Đối với nhận diện cảm xúc, thay vì gọi Python, Service nạp trực tiếp file mô hình \texttt{emotion\_model.onnx} bằng thư viện \textbf{ONNX Runtime Go bindings} để thực thi suy luận trực tiếp bằng mã máy, giảm thiểu hoàn toàn thời gian giao tiếp liên tiến trình.
+\end{itemize}
+
+\subsection{Triển khai Kiến trúc Sạch Frontend Next.js (Clean Architecture)}
+
+Frontend Next.js được tổ chức theo chuẩn Kiến trúc Sạch (Clean Architecture) phân chia thành 3 lớp riêng biệt: Domain, Data, và Presentation.
+
+\begin{itemize}
+    \item \textbf{Domain Layer}: Chứa các thực thể cốt lõi (Models) và UseCases xử lý nghiệp vụ thuần túy không phụ thuộc vào giao diện hoặc thư viện mạng.
+    \item \textbf{Data Layer}: Chứa các tệp mô tả Zod Schema (DTOs) để kiểm tra dữ liệu đầu vào, Mappers chuyển đổi dữ liệu thô từ API sang dạng Model sạch, và Datasource trực tiếp gọi HTTP Client tới Go backend.
+    \item \textbf{Presentation Layer}: Chia thành hai thành phần chính:
+    \begin{itemize}
+        \item \textbf{ViewModels}: Xây dựng dưới dạng các React Custom Hooks (\texttt{use-single-detect-viewmodel.js}) để quản lý toàn bộ trạng thái (state), luồng gọi API và vẽ canvas, tách biệt hoàn toàn khỏi mã giao diện UI.
+        \item \textbf{Components}: Render giao diện trực quan và lắng nghe các tương tác của người dùng (\texttt{SingleDetectTab.js}, \texttt{FaceVerificationTab.js}).
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Thuật toán tự động scale tọa độ Canvas landmarks}
+Khi nhận kết quả landmarks từ Backend, các tọa độ $(x_i, y_i)$ được trả về dựa trên độ phân giải gốc của tệp ảnh ($W_{orig} \times H_{orig}$). Tuy nhiên, trên giao diện web có tính năng Responsive, ảnh hiển thị thực tế trên trình duyệt có kích thước thay đổi $W_{display} \times H_{display}$. Để vẽ chính xác bounding box và landmarks đè lên ảnh mà không bị lệch, ViewModel áp dụng công thức hình học tỷ lệ:
+\begin{equation}
+    u_i = x_i \times \frac{W_{display}}{W_{orig}}, \quad v_i = y_i \times \frac{H_{display}}{H_{orig}}
+\end{equation}
+Trong đó $(u_i, v_i)$ là tọa độ canvas thực tế mà hệ thống sẽ vẽ các điểm tròn landmarks hoặc hình chữ nhật bao quanh mặt. Thuật toán này giúp landmarks hiển thị chính xác tuyệt đối trên mọi độ phân giải màn hình của thiết bị khách hàng.

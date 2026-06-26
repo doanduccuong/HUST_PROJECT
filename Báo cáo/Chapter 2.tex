@@ -18,7 +18,18 @@
 \begin{equation}
     L = L_{cls}(p_i, p_i^*) + \lambda_1 p_i^* L_{box}(t_i, t_i^*) + \lambda_2 p_i^* L_{pts}(l_i, l_i^*)
 \end{equation}
-Trong đó $L_{cls}$ là hàm mất mát phân loại khuôn mặt, $L_{box}$ là hàm hồi quy bounding box, và $L_{pts}$ là hàm hồi quy điểm mốc sơ bộ. Việc kết hợp RetinaFace còn đồng thời trích xuất các điểm mốc giải phẫu chính xác làm tiền đề cho bước căn chỉnh tiếp theo. Để xác định chính xác trạng thái đeo khẩu trang y tế che khuất của khách hàng nhằm tự động kích hoạt chế độ thích ứng tương ứng, em tích hợp thêm một bộ phân loại nhị phân dựa trên cấu trúc mạng MobileNetV2 tối ưu \cite{loey2021framework} được huấn luyện trên cơ sở dữ liệu MaskedFace-Net \cite{maskedface_net}.
+Trong đó các thành phần và biến số được định nghĩa chi tiết như sau:
+\begin{itemize}
+    \item $i$ biểu thị chỉ số của anchor (khung neo giả định vị trí).
+    \item $p_i$ là xác suất dự đoán anchor thứ $i$ là khuôn mặt. $p_i^*$ là nhãn thực tế (ground truth), nhận giá trị bằng 1 nếu anchor là positive (chứa khuôn mặt) và 0 nếu anchor là negative (nền background).
+    \item $L_{cls}(p_i, p_i^*)$ là hàm mất mát phân loại nhị phân (Binary Cross-Entropy Loss) để phân biệt giữa khuôn mặt và nền.
+    \item $t_i = \{t_x, t_y, t_w, t_h\}$ là vector mô tả tọa độ lệch của bounding box dự đoán, và $t_i^*$ là vector tọa độ lệch thực tế của ground truth tương ứng.
+    \item $L_{box}(t_i, t_i^*)$ là hàm mất mát hồi quy bounding box sử dụng hàm Smooth L1 Loss. Hệ số nhân $p_i^*$ đảm bảo rằng mất mát hồi quy tọa độ hộp chỉ được tính toán đối với các anchor dương (có chứa khuôn mặt).
+    \item $l_i = \{l_{x1}, l_{y1}, \dots, l_{x5}, l_{y5}\}$ là tọa độ của 5 điểm mốc giải phẫu sơ bộ được dự đoán (mắt trái, mắt phải, đỉnh mũi, khóe miệng trái, khóe miệng phải) và $l_i^*$ là tọa độ thực tế của chúng.
+    \item $L_{pts}(l_i, l_i^*)$ là hàm mất mát hồi quy điểm mốc, cũng sử dụng Smooth L1 Loss.
+    \item $\lambda_1$ và $\lambda_2$ là các siêu tham số điều phối trọng số giữa các nhiệm vụ phân loại, định vị hộp và định vị điểm mốc. Trong thực nghiệm thực tế, các giá trị này thường được cấu hình lần lượt là $\lambda_1 = 0.25$ và $\lambda_2 = 0.1$.
+\end{itemize}
+Việc kết hợp RetinaFace còn đồng thời trích xuất các điểm mốc giải phẫu chính xác làm tiền đề cho bước căn chỉnh tiếp theo. Để xác định chính xác trạng thái đeo khẩu trang y tế che khuất của khách hàng nhằm tự động kích hoạt chế độ thích ứng tương ứng, em tích hợp thêm một bộ phân loại nhị phân dựa trên cấu trúc mạng MobileNetV2 tối ưu \cite{loey2021framework} được huấn luyện trên cơ sở dữ liệu MaskedFace-Net \cite{maskedface_net}.
 
 \subsubsection{Căn chỉnh khuôn mặt thích ứng (Align)}
 
@@ -26,13 +37,13 @@ Trong đó $L_{cls}$ là hàm mất mát phân loại khuôn mặt, $L_{box}$ l�
 
 \textbf{Hạn chế đối với khuôn mặt qua can thiệp thẩm mỹ và che khuất:} Phẫu thuật thẩm mỹ cấu trúc (như nâng mũi, độn cằm, cắt mí) trực tiếp làm thay đổi vị trí giải phẫu thực tế của các mốc hình học, gây ra hiện tượng trôi lệch điểm mốc (\textit{landmark drift}). Tương tự, khi đeo khẩu trang, các điểm mốc từ mũi xuống cằm bị che lấp hoàn toàn, dẫn đến việc dự đoán điểm mốc bị sai lệch nghiêm trọng. Khi đó, phép biến đổi Affine tiêu chuẩn (vốn dựa trên giả định cấu trúc khuôn mặt bất biến) sẽ tính toán sai lệch góc xoay, dẫn đến ảnh khuôn mặt sau khi căn chỉnh bị méo hoặc lệch tâm giải phẫu, làm hỏng đặc trưng đưa vào mạng trích xuất phía sau.
 
-\textbf{Phương pháp cải tiến thích ứng đề xuất:} Trong dự án này, em đề xuất giải pháp \textbf{Căn chỉnh thích ứng có trọng số (Weighted Alignment)} dựa trên bản đồ điểm mốc mật độ cao gồm 468 điểm (Dense Landmarks). Em sử dụng phép biến đổi Affine để ánh xạ các điểm mốc thực tế $P_i(x_i, y_i)$ sang tọa độ chuẩn $Q_i(u_i, v_i)$. Để loại bỏ ảnh hưởng của các vùng bị thay đổi cấu trúc hoặc bị che khuất bởi khẩu trang, mỗi điểm mốc thứ $i$ được gán một trọng số tin cậy $w_i \in [0, 1]$ tương ứng với mức độ khả dụng và bất biến của khu vực giải phẫu chứa điểm mốc đó. 
+\textbf{Phương pháp cải tiến thích ứng đề xuất:} Trong dự án này, em đề xuất giải pháp \textbf{Căn chỉnh thích ứng có trọng số (Weighted Alignment)} dựa trên bản đồ điểm mốc mật độ cao gồm 468 điểm (Dense Landmarks). Em sử dụng phép biến đổi Affine để ánh xạ các điểm mốc thực tế $P_i(x_i, y_i)^T$ sang tọa độ chuẩn trên khuôn mẫu $Q_i(u_i, v_i)^T$. Để loại bỏ ảnh hưởng của các vùng bị thay đổi cấu trúc hoặc bị che khuất bởi khẩu trang, mỗi điểm mốc thứ $i$ được gán một trọng số tin cậy $w_i \in [0, 1]$ tương ứng với mức độ khả dụng và bất biến của khu vực giải phẫu chứa điểm mốc đó. 
 
-Cụ thể, khi phát hiện có khẩu trang che khuất, toàn bộ các điểm mốc nằm trong vùng bị che (vùng trung và hạ mặt) sẽ được gán trọng số bằng không ($w_i = 0$), hệ thống chỉ sử dụng các điểm mốc vùng xương trán, hốc mắt và thái dương bất biến để tính toán ($w_i \approx 1.0$). Đây là sự mở rộng của phương pháp phân tích dạng hình học Procrustes có trọng số (Weighted Procrustes Analysis) \cite{weighted_procrustes}. Bài toán tối ưu hóa phép biến đổi Affine được biểu diễn dưới dạng cực tiểu hóa tổng bình phương sai số có trọng số:
+Cụ thể, khi phát hiện có khẩu trang che khuất, toàn bộ các điểm mốc nằm trong vùng bị che (vùng trung và hạ mặt gồm mũi, khóe miệng và cằm) sẽ được gán trọng số bằng không ($w_i = 0$), hệ thống chỉ sử dụng các điểm mốc vùng xương trán, hốc mắt và thái dương bất biến để tính toán ($w_i \approx 1.0$). Đây là sự mở rộng của phương pháp phân tích dạng hình học Procrustes có trọng số (Weighted Procrustes Analysis) \cite{weighted_procrustes}. Bài toán tối ưu hóa phép biến đổi Affine được biểu diễn dưới dạng cực tiểu hóa tổng bình phương sai số có trọng số:
 \begin{equation}
     \min_{M} \sum_{i=1}^{N} w_i \left\| Q_i - M(P_i) \right\|^2
 \end{equation}
-Trong đó $M$ là ma trận biến đổi Affine kích thước $2 \times 3$. Việc áp dụng trọng số thích ứng giúp khuôn mặt sau khi căn chỉnh không bị méo hoặc lệch tâm do sự trôi lệch hay biến mất của các điểm mốc đã bị can thiệp phẫu thuật hoặc che lấp bởi khẩu trang.
+Trong đó phép biến đổi Affine được mô hình hóa dưới dạng tuyến tính $M(P_i) = \mathbf{A} P_i + \mathbf{t}$ với $\mathbf{A} \in \mathbb{R}^{2 \times 2}$ là ma trận xoay và tỷ lệ biến đổi, và $\mathbf{t} \in \mathbb{R}^2$ là vector dịch chuyển tịnh tiến. Để giải quyết bài toán tối ưu hóa này, hệ thống áp dụng phép phân tích suy biến ma trận (Singular Value Decomposition - SVD) trên ma trận hiệp phương sai có trọng số $\mathbf{\Sigma}_{PQ} = \sum_{i=1}^N w_i (P_i - \bar{P})(Q_i - \bar{Q})^T$ (với $\bar{P}$ và $\bar{Q}$ là trọng tâm có trọng số của các tập điểm mốc). Việc tìm ra ma trận biến đổi tối ưu $M$ giúp khuôn mặt sau khi căn chỉnh xoay thẳng hoàn toàn dựa trên các cấu trúc trán-mắt bất biến, không bị méo hoặc lệch tâm do sự trôi lệch hay biến mất của các điểm mốc bị che lấp bởi khẩu trang.
 
 \subsubsection{Chuẩn hóa hình ảnh và kết cấu da (Normalize)}
 
@@ -81,3 +92,87 @@ Trong đó các trọng số $\alpha_1, \alpha_2, \alpha_3$ được điều ch�
     Score_{verify} = \alpha_1 S_{upper} + \beta S_{dynamic}
 \end{equation}
 Với điều kiện chuẩn hóa lại trọng số còn lại: $\alpha_1 + \beta = 1.0$. Việc áp dụng cơ chế thích ứng động này giúp duy trì độ chính xác nhận diện vượt trội ngay cả trong trạng thái che khuất diện rộng bởi khẩu trang y tế, đáp ứng hoàn hảo bài toán thực tế tại các bệnh viện thẩm mỹ, nơi khách hàng bắt buộc phải đeo khẩu trang để bảo vệ vết thương sau phẫu thuật. Nếu $Score_{verify}$ vượt qua ngưỡng thích ứng $\theta_{adapt}$, danh tính khách hàng sẽ được xác nhận thành công.
+
+\subsection{Cơ sở toán học của Tiền xử lý hình ảnh thích ứng (CLAHE \& Bilateral Filter)}
+
+Để cải thiện chất lượng ảnh chụp lâm sàng tại spa, vốn bị ảnh hưởng bởi điều kiện ánh sáng không đồng đều và các nhiễu kết cấu da (như đỏ da, sưng tấy sau điều trị), hệ thống áp dụng hai phương pháp xử lý toán học cốt lõi:
+
+\subsubsection{Cân bằng biểu đồ tần suất thích ứng giới hạn độ tương phản (CLAHE)}
+Thuật toán CLAHE được sử dụng để cân bằng độ tương phản cục bộ mà không phóng đại nhiễu. Thay vì cân bằng toàn phần biểu đồ tần suất (Histogram Equalization) dễ dẫn đến cháy sáng, CLAHE chia ma trận hình ảnh thành các ô nhỏ không chồng chéo gọi là \textit{tiles} (ví dụ: kích thước $8 \times 8$). Đối với mỗi ô, biểu đồ tần suất cục bộ được xây dựng. Một giới hạn cắt (\textit{clip limit}) $\beta_{clip}$ được áp dụng để giới hạn số lượng điểm ảnh tối đa trong mỗi mức xám:
+\begin{equation}
+    \beta_{clip} = \frac{N_{pixels}}{N_{bins}} \times \left(1 + \frac{\alpha_{clip}}{100} (S_{max} - 1)\right)
+    \label{eq:clip_limit}
+\end{equation}
+Trong đó $N_{pixels}$ là tổng số điểm ảnh trong ô, $N_{bins}$ là số lượng mức xám (thường là 256), $\alpha_{clip}$ là hệ số giới hạn thực tế, và $S_{max}$ là độ dốc tương phản tối đa cho phép. Các điểm ảnh vượt quá ngưỡng cắt sẽ được phân phối đều lại cho tất cả các mức xám để bảo toàn năng lượng. Cuối cùng, hàm phân phối tích lũy (CDF) được sử dụng làm hàm chuyển đổi và phép nội suy song tuyến tính (Bilinear Interpolation) được thực hiện giữa các ô lân cận để triệt tiêu hiện tượng phân mảnh đường biên giữa các ô.
+
+\subsubsection{Bộ lọc song phương bảo toàn đường biên (Bilateral Filter)}
+Đối với các vết đỏ da và sưng tấy tạm thời sau phẫu thuật thẩm mỹ, việc sử dụng các bộ lọc mờ thông thường như Gaussian Filter sẽ làm nhòe các đường biên giải phẫu giải phẫu sắc cạnh (như mí mắt, sống mũi), làm giảm độ chính xác của landmarks. Bộ lọc song phương giải quyết triệt để vấn đề này bằng cách tích hợp cả miền không gian giải lý và miền cường độ màu sắc trong hàm nhân tích chập.
+Đầu ra của bộ lọc tại điểm ảnh trung tâm $x$ được tính bằng:
+\begin{equation}
+    I^{filtered}(x) = \frac{1}{W_p} \sum_{x_i \in \Omega} I(x_i) g_s(\|x_i - x\|) f_r(\|I(x_i) - I(x)\|)
+\end{equation}
+Trong đó hệ số chuẩn hóa $W_p$ được định nghĩa là:
+\begin{equation}
+    W_p = \sum_{x_i \in \Omega} g_s(\|x_i - x\|) f_r(\|I(x_i) - I(x)\|)
+\end{equation}
+Hàm nhân không gian $g_s$ đo lường khoảng cách Euclid về vị trí giữa điểm ảnh trung tâm $x$ và điểm ảnh lân cận $x_i$:
+\begin{equation}
+    g_s(\|x_i - x\|) = \exp\left( - \frac{\|x_i - x\|^2}{2 \sigma_s^2} \right)
+\end{equation}
+Hàm nhân cường độ $f_r$ đo lường sự tương đồng về màu sắc/mức xám để ngăn cản việc tích chập qua các vùng biên có sự thay đổi màu sắc đột ngột:
+\begin{equation}
+    f_r(\|I(x_i) - I(x)\|) = \exp\left( - \frac{\|I(x_i) - I(x)\|^2}{2 \sigma_r^2} \right)
+\end{equation}
+Với $\sigma_s$ và $\sigma_r$ là độ lệch chuẩn kiểm soát kích thước cửa sổ lọc không gian và độ nhạy màu sắc. Nhờ cơ chế này, bộ lọc song phương làm mịn các vết sưng/đỏ trên bề mặt da thực (nơi cường độ màu sắc biến thiên nhỏ $\le \sigma_r$) nhưng hoàn toàn đứng im trước các đường biên giải phẫu sắc cạnh (nơi thay đổi cường độ rất lớn $> \sigma_r$), bảo toàn nguyên vẹn cấu trúc hình học của khuôn mặt.
+
+\subsection{Cơ sở lý thuyết học sâu và Kiến trúc MobileNetV2}
+
+Kiến trúc MobileNetV2 \cite{mobilenetv2} được lựa chọn làm backbone cho mô hình phân tích biểu cảm cảm xúc nhờ tính gọn nhẹ tối ưu nhưng vẫn đạt độ chính xác tương đương các mạng CNN lớn. Cơ sở lý thuyết của MobileNetV2 dựa trên ba thành phần toán học chính:
+
+\subsubsection{Phép tích chập tách biệt chiều sâu (Depthwise Separable Convolution)}
+Phép tích chập này chia tích chập thông thường thành hai bước riêng biệt:
+1. \textbf{Depthwise Convolution (DW):} Áp dụng một bộ lọc kích thước $K \times K$ duy nhất cho mỗi kênh đầu vào độc lập.
+2. \textbf{Pointwise Convolution (PW):} Áp dụng bộ lọc $1 \times 1$ để kết hợp tuyến tính đầu ra của bước DW trên các kênh màu.
+So sánh về chi phí tính toán (Computational Cost) và số lượng tham số giữa tích chập thông thường ($C_{std}$) và tách biệt chiều sâu ($C_{sep}$):
+\begin{equation}
+    \frac{C_{sep}}{C_{std}} = \frac{D_F^2 \cdot M \cdot K^2 + D_F^2 \cdot M \cdot N}{D_F^2 \cdot M \cdot N \cdot K^2} = \frac{1}{N} + \frac{1}{K^2}
+\end{equation}
+Trong đó $D_F$ là kích thước bản đồ đặc trưng, $M$ là số kênh đầu vào, $N$ là số kênh đầu ra, và $K \times K$ là kích thước kernel (thường $K=3$). Tỉ số này chỉ ra rằng phép tích chập tách biệt chiều sâu giúp giảm khối lượng tính toán xuống khoảng 8 đến 9 lần mà không làm suy giảm đáng kể độ chính xác của mạng.
+
+\subsubsection{Khối dư đảo ngược (Inverted Residuals)}
+Ngược lại với khối dư cổ điển (chèn layer cổ chai hẹp ở giữa), khối dư đảo ngược thực hiện mở rộng kênh trong không gian trước khi thực hiện tích chập DW:
+\begin{itemize}
+    \item \textbf{Lớp mở rộng (Expansion Layer):} Sử dụng tích chập $1 \times 1$ để chiếu vector đặc trưng đầu vào có số kênh hẹp $k$ sang không gian số kênh rộng $k \times t$ (với hệ số mở rộng $t$ thường bằng 6). Điều này cho phép mạng xử lý đặc trưng trong không gian nhiều chiều hơn, tăng khả năng phân tách tuyến tính.
+    \item \textbf{Lớp tích chập chiều sâu (Depthwise Layer):} Áp dụng tích chập DW $3 \times 3$ trên không gian mở rộng.
+    \item \textbf{Lớp nút cổ chai (Projection/Bottleneck Layer):} Sử dụng tích chập $1 \times 1$ để nén số kênh quay lại giá trị hẹp ban đầu.
+\end{itemize}
+
+\subsubsection{Nút cổ chai tuyến tính (Linear Bottlenecks)}
+Việc áp dụng hàm kích hoạt phi tuyến tính (như ReLU) trong không gian hẹp (ít chiều) sẽ phá hủy một lượng lớn thông tin hữu ích (do các giá trị âm bị triệt tiêu về không). Để giải quyết vấn đề này, MobileNetV2 loại bỏ hàm ReLU ở layer cuối cùng của mỗi khối nén (Projection Layer) và thay thế bằng một hàm kích hoạt tuyến tính (Linear Activation):
+\begin{equation}
+    y = f_{linear}(W \cdot x + b) = W \cdot x + b
+\end{equation}
+Sự kết hợp giữa Khối dư đảo ngược và Nút cổ chai tuyến tính giúp bảo toàn nguyên vẹn lượng thông tin truyền qua mạng qua các tầng sâu hơn.
+
+\subsection{Cơ sở lý thuyết y khoa thẩm mỹ về FACS và Hệ thống điểm mốc hình học đối xứng}
+
+Để xây dựng các chỉ số đo lường định lượng thẩm mỹ, đồ án tích hợp các cơ sở lý thuyết y sinh và hình học giải phẫu khuôn mặt:
+
+\subsubsection{Hệ thống mã hóa hành động cơ mặt (Facial Action Coding System - FACS)}
+Được phát triển bởi Paul Ekman \cite{facs}, FACS phân tách chuyển động cơ mặt thành các đơn vị hành động (Action Units - AUs) dựa trên sự co dãn của các nhóm cơ mặt giải phẫu cụ thể. Sự co dãn của các nhóm cơ này trực tiếp thay đổi khoảng cách hình học giữa các điểm mốc giải phẫu ngoài da. Ví dụ:
+\begin{itemize}
+    \item Sự co của cơ trán (\textit{Frontalis}) tạo ra AU1 và AU2 (nâng chân mày trong và ngoài), đặc trưng cho biểu cảm ngạc nhiên (Surprise) hoặc sợ hãi (Fear).
+    \item Sự co của cơ cau mày (\textit{Corrugator supercilii}) tạo ra AU4 (kéo chân mày lại gần nhau), đặc trưng cho biểu cảm tức giận (Anger) hoặc buồn bã (Sadness).
+    \item Sự co của cơ gò má lớn (\textit{Zygomaticus major}) tạo ra AU12 (kéo khóe miệng lên trên và ra ngoài), đặc trưng cho biểu cảm vui vẻ (Happy).
+\end{itemize}
+
+Hệ thống của đồ án huấn luyện mô hình MobileNetV2 trên tập dữ liệu FER2013 \cite{fer2013} để tự động học ánh xạ phi tuyến từ ma trận điểm ảnh chứa thông tin co dãn cơ mặt này sang phân phối xác suất của 7 trạng thái cảm xúc.
+
+\subsubsection{Cơ sở hình học của Tỉ lệ đối xứng cơ mặt (MSR)}
+Tiêm Botox (Botulinum toxin) hoạt động bằng cách ức chế tạm thời sự giải phóng Acetylcholine tại các đầu tận cùng thần kinh-cơ, làm tê liệt hoặc hạn chế vận động cơ mục tiêu nhằm xóa nếp nhăn. Tiêm Filler (chất làm đầy) trực tiếp làm thay đổi thể tích cục bộ vùng mô mềm. Các can thiệp thẩm mỹ này khi xảy ra biến chứng lệch cơ (hoặc trong giai đoạn hồi phục) sẽ tạo ra sự mất cân đối giải phẫu giữa nửa mặt trái và phải khi khách hàng thực hiện các biểu cảm động.
+
+Để định lượng hóa điều này, đồ án sử dụng bộ phát hiện landmarks để trích xuất các điểm mốc đối xứng giải phẫu. Trục đối xứng trung tâm được xác định bởi đường nối giữa các điểm bất biến nằm trên trục giữa khuôn mặt bao gồm: điểm gốc mũi (Sellion), đỉnh mũi (Pronasale), nhân trung (Subnasale), và điểm cằm (Menton). Khoảng cách Euclid từ một điểm mốc đối xứng bên trái $P_{left}^{(i)}$ và bên phải $P_{right}^{(i)}$ đến trục đối xứng trung tâm được tính toán tương ứng là $d_{left}^{(i)}$ và $d_{right}^{(i)}$. Chỉ số $MSR \in [0, 1]$ được thiết lập dựa trên độ lệch chuẩn hóa của $N$ nhóm cơ đối xứng:
+\begin{equation}
+    MSR = 1.0 - \frac{1}{N} \sum_{i=1}^{N} \frac{|d_{left}^{(i)} - d_{right}^{(i)}|}{d_{left}^{(i)} + d_{right}^{(i)}}
+\end{equation}
+Nếu $MSR \approx 1.0$, cơ mặt phục hồi đối xứng hoàn hảo. Nếu $MSR < 0.90$, hệ thống cảnh báo lệch cơ vận động, hỗ trợ bác sĩ phát hiện sớm biến chứng thẩm mỹ.

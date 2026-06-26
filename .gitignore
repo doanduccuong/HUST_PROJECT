@@ -51,3 +51,24 @@ ENV/
 # DeepFace local datastores and weights
 *.pkl
 *.ldsa
+
+# Go Build Artifacts
+face_recognition_be/cmd/server/server
+face_recognition_be/cmd/client_test/client_test
+*.test
+*.prof
+# Models & Weights
+face_recognition_be/assets/models/
+*.onnx
+!deepfacev2/train_pipeline/emotion_model.onnx
+
+# Frontend Build and Dependency folders
+face_recognition_fe/node_modules/
+face_recognition_fe/.next/
+face_recognition_fe/out/
+face_recognition_fe/build/
+.pnpm-debug.log*
+
+# Datasets
+**/dataset/
+**/datasets/

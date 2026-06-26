@@ -1,0 +1,6 @@
+# AI Agent Guidelines (face_recognition_be)
+
+1. Review and follow the architectural layered structure (Handler-Service-DTO) and coding guidelines defined in `AGENTS.md`.
+2. Do not write business logic or inline pipe communication logic inside handlers in `internal/app/handler/`. Put model wrapper logic in `internal/app/service/`.
+3. Keep the JSON naming consistent and clean.
+4. Run tests or build to verify changes before concluding tasks.
