@@ -24,5 +24,20 @@ export function toFaceVerificationDomain(dto) {
     galleryLandmarks: v?.gallery_landmarks ?? [],
     targetDims: v?.target_dims ?? [],
     galleryDims: v?.gallery_dims ?? [],
+    
+    // New fields mapping
+    distance: v?.distance ?? 0.0,
+    threshold: v?.threshold ?? 0.0,
+    fusedDistance: v?.fused_distance ?? 0.0,
+    fusedThreshold: v?.fused_threshold ?? 0.0,
+    eyesDistance: v?.eyes_distance ?? 0.0,
+    noseDistance: v?.nose_distance ?? 0.0,
+    mouthDistance: v?.mouth_distance ?? 0.0,
+    eyesWeight: v?.eyes_weight ?? 0.0,
+    noseWeight: v?.nose_weight ?? 0.0,
+    mouthWeight: v?.mouth_weight ?? 0.0,
+    model: v?.model ?? "",
+    detectorBackend: v?.detector_backend ?? "",
+    similarityMetric: v?.similarity_metric ?? "",
   });
 }

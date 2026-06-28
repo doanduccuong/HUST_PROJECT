@@ -10,7 +10,22 @@ export class FaceVerification {
     galleryBbox,
     galleryLandmarks,
     targetDims,
-    galleryDims
+    galleryDims,
+    
+    // New fields
+    distance,
+    threshold,
+    fusedDistance,
+    fusedThreshold,
+    eyesDistance,
+    noseDistance,
+    mouthDistance,
+    eyesWeight,
+    noseWeight,
+    mouthWeight,
+    model,
+    detectorBackend,
+    similarityMetric
   } = {}) {
     this.verified = verified ?? false;
     this.matchingScore = matchingScore ?? 0.0;
@@ -23,5 +38,19 @@ export class FaceVerification {
     this.galleryLandmarks = galleryLandmarks ?? [];
     this.targetDims = targetDims ?? [];
     this.galleryDims = galleryDims ?? [];
+    
+    this.distance = distance ?? 0.0;
+    this.threshold = threshold ?? 0.0;
+    this.fusedDistance = fusedDistance ?? 0.0;
+    this.fusedThreshold = fusedThreshold ?? 0.0;
+    this.eyesDistance = eyesDistance ?? 0.0;
+    this.noseDistance = noseDistance ?? 0.0;
+    this.mouthDistance = mouthDistance ?? 0.0;
+    this.eyesWeight = eyesWeight ?? 0.0;
+    this.noseWeight = noseWeight ?? 0.0;
+    this.mouthWeight = mouthWeight ?? 0.0;
+    this.model = model ?? "";
+    this.detectorBackend = detectorBackend ?? "";
+    this.similarityMetric = similarityMetric ?? "";
   }
 }

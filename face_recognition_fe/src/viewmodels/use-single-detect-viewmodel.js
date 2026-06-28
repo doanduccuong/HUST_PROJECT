@@ -72,6 +72,12 @@ export function useSingleDetectViewModel() {
 
     const ctx = canvas.getContext("2d");
 
+    // Position and size the canvas exactly matching the displayed image coordinates
+    canvas.style.left = `${img.offsetLeft}px`;
+    canvas.style.top = `${img.offsetTop}px`;
+    canvas.style.width = `${img.clientWidth}px`;
+    canvas.style.height = `${img.clientHeight}px`;
+
     // Match display size
     canvas.width = img.clientWidth;
     canvas.height = img.clientHeight;

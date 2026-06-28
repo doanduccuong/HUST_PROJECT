@@ -1,56 +1,80 @@
-import cv2
+# built-in dependencies
+from typing import List, Union, cast
+
+# third-party dependencies
 import numpy as np
 
-def normalize_face(
-    face_img: np.ndarray,
-    mask_detected: bool = False
-) -> np.ndarray:
+# project dependencies
+from deepfacev2.config.minmax import get_minmax_values
+from deepfacev2.commons.embed_utils import is_flat_embedding
+
+
+def normalize_embedding_minmax(
+    model_name: str, embeddings: Union[List[float], List[List[float]]]
+) -> Union[List[float], List[List[float]]]:
     """
-    Applies lighting normalization and skin smoothing.
-    
+    Normalize embeddings using min-max normalization based on model-specific min-max values.
     Args:
-        face_img (np.ndarray): Cropped and aligned face image (BGR format).
-        mask_detected (bool): Whether the face has a mask (affects skin smoothing region).
-        
+        model_name (str): Name of the model to get min-max values for.
+        embeddings (List[float] or List[List[float]]): Embeddings to normalize.
     Returns:
-        np.ndarray: Normalized and smoothed face image.
+        List[float] or List[List[float]]: Normalized embeddings.
     """
-    if face_img is None or face_img.size == 0:
-        return face_img
+    dim_min, dim_max = get_minmax_values(model_name)
 
-    # 1. Illumination Normalization using LAB CLAHE
-    # Convert from BGR to LAB color space
-    lab = cv2.cvtColor(face_img, cv2.COLOR_BGR2LAB)
-    l, a, b = cv2.split(lab)
-    
-    # Apply CLAHE to the L channel (lightness)
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    cl = clahe.apply(l)
-    
-    # Merge channels and convert back to BGR
-    limg = cv2.merge((cl, a, b))
-    illum_normalized = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
+    if dim_max - dim_min == 0:
+        return embeddings
 
-    # 2. Skin Smoothing using Bilateral Filter
-    # Bilateral filtering preserves edges while smoothing flat skin regions
-    # d=9 (pixel diameter), sigmaColor=75 (color similarity), sigmaSpace=75 (coordinate distance)
-    smoothed = cv2.bilateralFilter(illum_normalized, d=9, sigmaColor=75, sigmaSpace=75)
-    
-    if mask_detected:
-        # If mask is detected, we can optionally mask out the lower face so we only smooth 
-        # actual exposed skin (forehead and eyes) and keep the surgical mask texture crisp.
-        # However, bilateral filtering naturally keeps mask borders sharp, so a full filter is 
-        # also safe. Let's merge them nicely.
-        h, w, _ = face_img.shape
-        # Create a mask where top 60% (eyes/forehead) is smoothed, and bottom 40% (mask) is unchanged
-        blend_mask = np.zeros((h, w, 1), dtype=np.float32)
-        blend_mask[:int(h * 0.6), :] = 1.0
-        
-        # Soft transition border
-        cv2.GaussianBlur(blend_mask, (15, 15), 0, dst=blend_mask)
-        blend_mask = blend_mask[:, :, np.newaxis] if len(blend_mask.shape) == 2 else blend_mask
-        
-        normalized = (smoothed * blend_mask + illum_normalized * (1.0 - blend_mask)).astype(np.uint8)
-        return normalized
+    if is_flat_embedding(embeddings):
+        embeddings = cast(List[float], embeddings)  # let type checker know
 
-    return smoothed
+        # Clamp vals to [dim_min, dim_max] to ensure the norm-embedding stays in [0, 1]
+        embeddings = [max(x, dim_min) for x in embeddings]  # lower-bound clamp
+        embeddings = [min(x, dim_max) for x in embeddings]  # upper-bound clamp
+
+        embeddings = [(x - dim_min) / (dim_max - dim_min) for x in embeddings]
+
+    else:
+        normalized_embeddings = []
+        for emb in embeddings:
+            emb = cast(List[float], emb)  # let type checker know
+
+            # Clamp vals to [dim_min, dim_max] to ensure the norm-embedding stays in [0, 1]
+            emb = [max(x, dim_min) for x in emb]  # lower-bound clamp
+            emb = [min(x, dim_max) for x in emb]  # upper-bound clamp
+
+            emb = [(min(max(x, dim_min), dim_max) - dim_min) / (dim_max - dim_min) for x in emb]
+            normalized_embeddings.append(emb)
+        embeddings = normalized_embeddings
+
+    return embeddings
+
+
+def normalize_embedding_l2(
+    embeddings: Union[List[float], List[List[float]]],
+) -> Union[List[float], List[List[float]]]:
+    """
+    Normalize embeddings using L2 normalization.
+    Args:
+        embeddings (List[float] or List[List[float]]): Embeddings to normalize.
+    Returns:
+        List[float] or List[List[float]]: L2-normalized embeddings.
+    """
+    if is_flat_embedding(embeddings):
+        norm = float(np.linalg.norm(embeddings))
+        if norm > 0:
+            embeddings = cast(List[float], embeddings)  # let type checker know
+            embeddings = (np.array(embeddings) / norm).tolist()
+    else:
+        normalized_embeddings = []
+        for emb in embeddings:
+            emb = cast(List[float], emb)  # let type checker know
+            norm = float(np.linalg.norm(emb))
+            if norm > 0:
+                normalized_emb = (np.array(emb) / norm).tolist()
+            else:
+                normalized_emb = emb
+            normalized_embeddings.append(normalized_emb)
+        embeddings = normalized_embeddings
+
+    return embeddings

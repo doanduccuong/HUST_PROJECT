@@ -59,6 +59,7 @@ face_recognition_be/cmd/client_test/client_test
 *.prof
 # Models & Weights
 face_recognition_be/assets/models/
+face_recognition_be/temp/
 *.onnx
 !deepfacev2/train_pipeline/emotion_model.onnx
 
@@ -72,3 +73,8 @@ face_recognition_fe/build/
 # Datasets
 **/dataset/
 **/datasets/
+deepfacev2/experiments/c2fpw_images/
+test_images/C2FPW/
+test_images/SurFace1259/
+test_images/IIIT-D/
+test_images/3D-Face-Morph/

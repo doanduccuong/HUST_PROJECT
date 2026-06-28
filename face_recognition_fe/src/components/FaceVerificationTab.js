@@ -1,6 +1,7 @@
 import React from "react";
 
 export function FaceVerificationTab({ viewModel }) {
+  const [activeTab, setActiveTab] = React.useState("proposed");
   const {
     currentImg,
     galleryImg,
@@ -51,7 +52,6 @@ export function FaceVerificationTab({ viewModel }) {
                 </div>
               ) : (
                 <label className="flex flex-col items-center justify-center gap-2 cursor-pointer w-full h-full hover:bg-slate-900/20 transition p-6 text-center">
-                  <span className="text-3xl">👤</span>
                   <span className="text-xs font-bold text-slate-300">Upload Target Photo</span>
                   <span className="text-[10px] text-slate-500">Supports JPG, PNG (Max 10MB)</span>
                   <input type="file" accept="image/*" onChange={handleCurrentChange} className="hidden" />
@@ -95,7 +95,6 @@ export function FaceVerificationTab({ viewModel }) {
                 </div>
               ) : (
                 <label className="flex flex-col items-center justify-center gap-2 cursor-pointer w-full h-full hover:bg-slate-900/20 transition p-6 text-center">
-                  <span className="text-3xl">🗃️</span>
                   <span className="text-xs font-bold text-slate-300">Upload Reference Photo</span>
                   <span className="text-[10px] text-slate-500">Unmasked original registration photo</span>
                   <input type="file" accept="image/*" onChange={handleGalleryChange} className="hidden" />
@@ -131,7 +130,6 @@ export function FaceVerificationTab({ viewModel }) {
               </>
             ) : (
               <>
-                <span>🛡️</span>
                 Run 5-Stage Adaptive Verification
               </>
             )}
@@ -140,7 +138,6 @@ export function FaceVerificationTab({ viewModel }) {
 
         {verifyError && (
           <div className="bg-rose-950/40 border border-rose-900/60 rounded-xl p-4 text-xs text-rose-300 flex items-center gap-3">
-            <span className="text-lg">⚠️</span>
             <p>{verifyError}</p>
           </div>
         )}
@@ -150,60 +147,136 @@ export function FaceVerificationTab({ viewModel }) {
       <section className="lg:col-span-4 flex flex-col gap-6">
         {/* Status Panel */}
         <div className="bg-slate-900/40 border border-slate-900 rounded-2xl p-5 shadow-lg backdrop-blur-sm relative overflow-hidden">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4 border-b border-slate-900 pb-2">
-            Verification Result
-          </h2>
+          {/* Tab toggles */}
+          <div className="flex border-b border-slate-800 mb-4">
+            <button
+              onClick={() => setActiveTab("proposed")}
+              className={`flex-1 pb-2.5 text-xs font-bold uppercase tracking-wider transition ${
+                activeTab === "proposed"
+                  ? "text-cyan-400 border-b-2 border-cyan-500"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              Adaptive Fusion (Ours)
+            </button>
+            <button
+              onClick={() => setActiveTab("original")}
+              className={`flex-1 pb-2.5 text-xs font-bold uppercase tracking-wider transition ${
+                activeTab === "original"
+                  ? "text-slate-200 border-b-2 border-slate-500"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              Standard DeepFace
+            </button>
+          </div>
 
           {verifyResult ? (
             <div className="flex flex-col gap-4">
-              {/* Big Match Badge */}
-              <div className={`p-4 rounded-xl flex items-center gap-4 ${verifyResult.verified ? "bg-emerald-950/40 border border-emerald-900/40" : "bg-rose-950/40 border border-rose-900/40"}`}>
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl ${verifyResult.verified ? "bg-emerald-500/10 text-emerald-400 animate-pulse" : "bg-rose-500/10 text-rose-400"}`}>
-                  {verifyResult.verified ? "✅" : "❌"}
-                </div>
-                <div>
-                  <h4 className={`text-md font-black tracking-wider uppercase ${verifyResult.verified ? "text-emerald-400" : "text-rose-400"}`}>
-                    {verifyResult.verified ? "MATCHED (SAFE)" : "MISMATCH (ALERT)"}
-                  </h4>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    Weighted Fusion Score: {verifyResult.matchingScore.toFixed(3)}
-                  </p>
-                </div>
-              </div>
+              {activeTab === "proposed" ? (
+                <>
+                  {/* Big Match Badge Proposed */}
+                  <div className={`p-4 rounded-xl flex items-center gap-4 ${verifyResult.verified ? "bg-emerald-950/40 border border-emerald-900/40" : "bg-rose-950/40 border border-rose-900/40"}`}>
+                    <div>
+                      <h4 className={`text-md font-black tracking-wider uppercase ${verifyResult.verified ? "text-emerald-400" : "text-rose-400"}`}>
+                        {verifyResult.verified ? "IDENTITY VERIFIED" : "IDENTITY MISMATCH"}
+                      </h4>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Fused Similarity: {((1.0 - verifyResult.fusedDistance) * 100).toFixed(1)}% (Dist: {verifyResult.fusedDistance.toFixed(3)})
+                      </p>
+                    </div>
+                  </div>
 
-              {/* Similarity Progress bar */}
-              <div>
-                <div className="flex items-center justify-between text-xs mb-1.5">
-                  <span className="text-slate-400">Decision Match Score</span>
-                  <span className="font-semibold text-slate-200">{(verifyResult.matchingScore * 100).toFixed(1)}%</span>
-                </div>
-                <div className="h-2.5 bg-slate-950 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${verifyResult.verified ? "bg-emerald-500 shadow-md shadow-emerald-500/35" : "bg-rose-500 shadow-md shadow-rose-500/35"}`}
-                    style={{ width: `${Math.max(0, Math.min(100, verifyResult.matchingScore * 100))}%` }}
-                  ></div>
-                </div>
-                <div className="flex justify-between items-center text-[10px] text-slate-500 mt-1">
-                  <span>Threshold: 65%</span>
-                  <span>Target: {(verifyResult.matchingScore * 100).toFixed(0)}%</span>
-                </div>
-              </div>
+                  {/* Similarity Progress bar */}
+                  <div>
+                    <div className="flex items-center justify-between text-xs mb-1.5">
+                      <span className="text-slate-400">Adaptive Fusion Score</span>
+                      <span className="font-semibold text-slate-200">{((1.0 - verifyResult.fusedDistance) * 100).toFixed(1)}%</span>
+                    </div>
+                    <div className="h-2.5 bg-slate-950 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${verifyResult.verified ? "bg-emerald-500 shadow-md shadow-emerald-500/35" : "bg-rose-500 shadow-md shadow-rose-500/35"}`}
+                        style={{ width: `${Math.max(0, Math.min(100, (1.0 - verifyResult.fusedDistance) * 100))}%` }}
+                      ></div>
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] text-slate-500 mt-1">
+                      <span>Threshold: {((1.0 - verifyResult.fusedThreshold) * 100).toFixed(0)}% (Dist: {verifyResult.fusedThreshold.toFixed(2)})</span>
+                      <span>Target: {((1.0 - verifyResult.fusedDistance) * 100).toFixed(0)}%</span>
+                    </div>
+                  </div>
 
-              {/* Mask Info */}
-              <div className="bg-slate-950/50 rounded-xl p-3 border border-slate-900 flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] text-slate-500 uppercase">Adaptive Mode</span>
-                  <p className="text-xs font-bold text-slate-200 mt-0.5">
-                    {verifyResult.maskDetected ? "Masked Mode Activated" : "Normal Mode"}
-                  </p>
-                </div>
-                <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${verifyResult.maskDetected
-                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                  : "bg-slate-900 text-slate-400 border-slate-800"
-                }`}>
-                  {verifyResult.maskDetected ? "MASKED" : "UNMASKED"}
-                </span>
-              </div>
+                  {/* Plastic Surgery Alerts */}
+                  {verifyResult.eyesDistance <= 0.60 && (verifyResult.noseDistance > 0.60 || verifyResult.mouthDistance > 0.60) ? (
+                    <div className="bg-amber-950/30 rounded-xl p-3 border border-amber-500/20 flex flex-col gap-1.5">
+                      <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Plastic Surgery Detection</span>
+                      <p className="text-[11px] text-slate-300 leading-relaxed">
+                        {verifyResult.noseDistance > 0.60 && "• Rhinoplasty (Nose alteration) suspected. "}
+                        {verifyResult.mouthDistance > 0.60 && "• Genioplasty/Cheiloplasty (Lower face alteration) suspected. "}
+                        Ignoring surgically altered regions, relying on invariant eye structure.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="bg-slate-950/50 rounded-xl p-3 border border-slate-900 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] text-slate-500 uppercase">Adaptive Verification Mode</span>
+                        <p className="text-xs font-bold text-slate-200 mt-0.5">
+                          No heavy alterations detected
+                        </p>
+                      </div>
+                      <span className="text-xs px-2.5 py-0.5 rounded-full font-bold border bg-slate-900 text-slate-400 border-slate-800">
+                        BALANCED
+                      </span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  {/* Big Match Badge Original */}
+                  {(() => {
+                    const isOriginalVerified = verifyResult.distance < verifyResult.threshold;
+                    return (
+                      <>
+                        <div className={`p-4 rounded-xl flex items-center gap-4 ${isOriginalVerified ? "bg-emerald-950/40 border border-emerald-900/40" : "bg-rose-950/40 border border-rose-900/40"}`}>
+                          <div>
+                            <h4 className={`text-md font-black tracking-wider uppercase ${isOriginalVerified ? "text-emerald-400" : "text-rose-400"}`}>
+                              {isOriginalVerified ? "IDENTITY VERIFIED" : "IDENTITY MISMATCH"}
+                            </h4>
+                            <p className="text-[11px] text-slate-400 mt-0.5">
+                              Global Similarity: {((1.0 - verifyResult.distance) * 100).toFixed(1)}% (Dist: {verifyResult.distance.toFixed(3)})
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Similarity Progress bar */}
+                        <div>
+                          <div className="flex items-center justify-between text-xs mb-1.5">
+                            <span className="text-slate-400">Global Holistic Score</span>
+                            <span className="font-semibold text-slate-200">{((1.0 - verifyResult.distance) * 100).toFixed(1)}%</span>
+                          </div>
+                          <div className="h-2.5 bg-slate-950 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${isOriginalVerified ? "bg-emerald-500" : "bg-rose-500"}`}
+                              style={{ width: `${Math.max(0, Math.min(100, (1.0 - verifyResult.distance) * 100))}%` }}
+                            ></div>
+                          </div>
+                          <div className="flex justify-between items-center text-[10px] text-slate-500 mt-1">
+                            <span>Threshold: {((1.0 - verifyResult.threshold) * 100).toFixed(0)}% (Dist: {verifyResult.threshold.toFixed(2)})</span>
+                            <span>Target: {((1.0 - verifyResult.distance) * 100).toFixed(0)}%</span>
+                          </div>
+                        </div>
+
+                        {/* Informational limitations alert */}
+                        <div className="bg-rose-950/20 rounded-xl p-3 border border-rose-500/20 flex flex-col gap-1.5">
+                          <span className="text-[10px] font-bold text-rose-400 uppercase tracking-wider">Holistic deepface limitations</span>
+                          <p className="text-[11px] text-slate-300 leading-relaxed">
+                            Standard DeepFace matches faces using the entire image. When a specific region (like the nose or jaw) undergoes cosmetic changes, the global embedding drifts, causing false rejections.
+                          </p>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </>
+              )}
             </div>
           ) : (
             <div className="text-center py-8 text-slate-500 text-xs">
@@ -215,62 +288,61 @@ export function FaceVerificationTab({ viewModel }) {
         {/* Fusion weights breakdown */}
         <div className="bg-slate-900/40 border border-slate-900 rounded-2xl p-5 shadow-lg backdrop-blur-sm">
           <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4 border-b border-slate-900 pb-2">
-            Adaptive Decision Fusion (Stage 5)
+            Adaptive Decision Fusion
           </h2>
 
           {verifyResult ? (
             <div className="flex flex-col gap-3">
               <div className="text-[11px] text-slate-500 mb-1 leading-relaxed">
-                The system dynamically allocates fusion weights based on the presence of a face mask.
+                Weights are dynamically shifted away from suspected surgically altered patches.
               </div>
 
               {/* Upper Face region */}
               <div className="flex items-center justify-between bg-slate-950/40 p-2.5 rounded-lg border border-slate-900/60">
                 <div>
-                  <span className="text-[10px] font-semibold text-slate-400">Upper Face (Eyes/Forehead)</span>
-                  <div className="text-[11px] text-slate-500 mt-0.5">Sim: {verifyResult.similarities.upper_face.toFixed(3)}</div>
+                  <span className="text-[10px] font-semibold text-slate-400">Upper Face (Eyes & Forehead)</span>
+                  <div className="text-[11px] text-slate-500 mt-0.5">
+                    Cosine Dist: {verifyResult.eyesDistance.toFixed(3)} ({((1.0 - verifyResult.eyesDistance) * 100).toFixed(1)}% match)
+                  </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs font-bold text-cyan-400">wt: {verifyResult.appliedWeights.alpha_1_upper.toFixed(2)}</span>
+                  <span className="text-xs font-bold text-cyan-400">Weight: {(verifyResult.eyesWeight * 100).toFixed(0)}%</span>
                 </div>
               </div>
 
               {/* Middle Face region */}
-              <div className={`flex items-center justify-between p-2.5 rounded-lg border transition ${verifyResult.maskDetected
-                ? "bg-slate-950/10 border-slate-950/40 opacity-40"
+              <div className={`flex items-center justify-between p-2.5 rounded-lg border transition ${verifyResult.noseDistance > 0.60
+                ? "bg-amber-950/20 border-amber-500/20"
                 : "bg-slate-950/40 border-slate-900/60"
               }`}>
                 <div>
-                  <span className="text-[10px] font-semibold text-slate-400">Middle Face (Nose/Cheeks)</span>
-                  <div className="text-[11px] text-slate-500 mt-0.5">Sim: {verifyResult.similarities.middle_face.toFixed(3)}</div>
+                  <span className="text-[10px] font-semibold text-slate-400">
+                    Middle Face (Nose) {verifyResult.noseDistance > 0.60 && "⚠️ ALTERED"}
+                  </span>
+                  <div className="text-[11px] text-slate-500 mt-0.5">
+                    Cosine Dist: {verifyResult.noseDistance.toFixed(3)} ({((1.0 - verifyResult.noseDistance) * 100).toFixed(1)}% match)
+                  </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs font-bold text-cyan-400">wt: {verifyResult.appliedWeights.alpha_2_middle.toFixed(2)}</span>
+                  <span className="text-xs font-bold text-cyan-400">Weight: {(verifyResult.noseWeight * 100).toFixed(0)}%</span>
                 </div>
               </div>
 
               {/* Lower Face region */}
-              <div className={`flex items-center justify-between p-2.5 rounded-lg border transition ${verifyResult.maskDetected
-                ? "bg-slate-950/10 border-slate-950/40 opacity-40"
+              <div className={`flex items-center justify-between p-2.5 rounded-lg border transition ${verifyResult.mouthDistance > 0.60
+                ? "bg-amber-950/20 border-amber-500/20"
                 : "bg-slate-950/40 border-slate-900/60"
               }`}>
                 <div>
-                  <span className="text-[10px] font-semibold text-slate-400">Lower Face (Mouth/Chin)</span>
-                  <div className="text-[11px] text-slate-500 mt-0.5">Sim: {verifyResult.similarities.lower_face.toFixed(3)}</div>
+                  <span className="text-[10px] font-semibold text-slate-400">
+                    Lower Face (Mouth & Chin) {verifyResult.mouthDistance > 0.60 && "⚠️ ALTERED"}
+                  </span>
+                  <div className="text-[11px] text-slate-500 mt-0.5">
+                    Cosine Dist: {verifyResult.mouthDistance.toFixed(3)} ({((1.0 - verifyResult.mouthDistance) * 100).toFixed(1)}% match)
+                  </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs font-bold text-cyan-400">wt: {verifyResult.appliedWeights.alpha_3_lower.toFixed(2)}</span>
-                </div>
-              </div>
-
-              {/* Dynamic FACS region */}
-              <div className="flex items-center justify-between bg-slate-950/40 p-2.5 rounded-lg border border-slate-900/60">
-                <div>
-                  <span className="text-[10px] font-semibold text-slate-400">Dynamic FACS Expression</span>
-                  <div className="text-[11px] text-slate-500 mt-0.5">Sim: {verifyResult.similarities.dynamic_facs.toFixed(3)}</div>
-                </div>
-                <div className="text-right">
-                  <span className="text-xs font-bold text-cyan-400">wt: {verifyResult.appliedWeights.beta_dynamic.toFixed(2)}</span>
+                  <span className="text-xs font-bold text-cyan-400">Weight: {(verifyResult.mouthWeight * 100).toFixed(0)}%</span>
                 </div>
               </div>
             </div>
@@ -289,12 +361,16 @@ export function FaceVerificationTab({ viewModel }) {
           {verifyResult ? (
             <div className="font-mono text-[9px] text-cyan-400/80 flex-1 overflow-y-auto max-h-[160px] flex flex-col gap-2">
               <div>
-                <span className="text-slate-500 font-bold uppercase">Target BBox:</span> [{verifyResult.targetBbox?.join(", ")}]
-                <div className="text-slate-400 ml-2">Landmarks: [{verifyResult.targetLandmarks?.map(pt => `(${pt[0]},${pt[1]})`).join(", ")}]</div>
+                <span className="text-slate-500 font-bold uppercase text-[9px]">Global DeepFace Engine:</span>
+                <div className="text-slate-400 ml-2">Model: {verifyResult.model}</div>
+                <div className="text-slate-400 ml-2">Metric: {verifyResult.similarityMetric}</div>
+                <div className="text-slate-400 ml-2">Global Distance: {verifyResult.distance.toFixed(4)} (Threshold: {verifyResult.threshold.toFixed(2)})</div>
+              </div>
+              <div className="border-t border-slate-800/50 my-1 pt-1">
+                <span className="text-slate-500 font-bold uppercase text-[9px]">Target BBox:</span> [{verifyResult.targetBbox?.join(", ")}]
               </div>
               <div>
-                <span className="text-slate-500 font-bold uppercase">Gallery BBox:</span> [{verifyResult.galleryBbox?.join(", ")}]
-                <div className="text-slate-400 ml-2">Landmarks: [{verifyResult.galleryLandmarks?.map(pt => `(${pt[0]},${pt[1]})`).join(", ")}]</div>
+                <span className="text-slate-500 font-bold uppercase text-[9px]">Gallery BBox:</span> [{verifyResult.galleryBbox?.join(", ")}]
               </div>
             </div>
           ) : (

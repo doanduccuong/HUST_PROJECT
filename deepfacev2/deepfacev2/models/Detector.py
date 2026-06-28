@@ -1,58 +1,77 @@
+# built-in imports
+from typing import List, Tuple, Optional, Any
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, List, Optional, Tuple
+
+# Third party imports
 from numpy.typing import NDArray
 
+# Notice that all facial detector models must be inherited from this class
+
+
+# pylint: disable=unnecessary-pass, too-few-public-methods, too-many-instance-attributes
 class Detector(ABC):
     @abstractmethod
     def detect_faces(self, img: NDArray[Any]) -> List["FacialAreaRegion"]:
         """
-        Interface to detect and align faces.
-        
+        Interface for detect and align face
+
         Args:
-            img (np.ndarray): Image as numpy array (BGR format)
-            
+            img (np.ndarray): pre-loaded image as numpy array
+
         Returns:
-            List[FacialAreaRegion]: A list of detected facial areas and landmarks.
+            results (List[FacialAreaRegion]): A list of FacialAreaRegion objects
+                where each object contains:
+
+            - facial_area (FacialAreaRegion): The facial area region represented
+                as x, y, w, h, left_eye and right_eye. left eye and right eye are
+                eyes on the left and right respectively with respect to the person
+                instead of observer.
         """
         pass
+
 
 @dataclass
 class FacialAreaRegion:
     """
-    Metadata representation of a detected facial area.
-    
-    Attributes:
-        x (int): Top-left x coordinate.
-        y (int): Top-left y coordinate.
-        w (int): Width.
-        h (int): Height.
-        left_eye (tuple): (x, y) coordinates of the left eye.
-        right_eye (tuple): (x, y) coordinates of the right eye.
-        nose (tuple): (x, y) coordinates of the nose tip.
-        mouth_left (tuple): (x, y) coordinates of the left mouth corner.
-        mouth_right (tuple): (x, y) coordinates of the right mouth corner.
-        confidence (float): Bounding box detection confidence score.
-        landmarks (list): 5 landmarks coordinates [(x1,y1), ..., (x5,y5)].
-        mask_detected (bool): True if wearing a mask.
-        mask_probability (float): Mask prediction probability.
+    Initialize a Face object.
+
+    Args:
+        x (int): The x-coordinate of the top-left corner of the bounding box.
+        y (int): The y-coordinate of the top-left corner of the bounding box.
+        w (int): The width of the bounding box.
+        h (int): The height of the bounding box.
+        left_eye (tuple): The coordinates (x, y) of the left eye with respect to
+            the person instead of observer. Default is None.
+        right_eye (tuple): The coordinates (x, y) of the right eye with respect to
+            the person instead of observer. Default is None.
+        confidence (float, optional): Confidence score associated with the face detection.
+            Default is None.
     """
+
     x: int
     y: int
     w: int
     h: int
     left_eye: Optional[Tuple[int, int]] = None
     right_eye: Optional[Tuple[int, int]] = None
-    nose: Optional[Tuple[int, int]] = None
-    mouth_left: Optional[Tuple[int, int]] = None
-    mouth_right: Optional[Tuple[int, int]] = None
     confidence: Optional[float] = None
-    landmarks: Optional[List[Tuple[int, int]]] = None
-    mask_detected: Optional[bool] = None
-    mask_probability: Optional[float] = None
+    nose: Optional[Tuple[int, int]] = None
+    mouth_right: Optional[Tuple[int, int]] = None
+    mouth_left: Optional[Tuple[int, int]] = None
+
 
 @dataclass
 class DetectedFace:
+    """
+    Initialize detected face object.
+
+    Args:
+        img (np.ndarray): detected face image as numpy array
+        facial_area (FacialAreaRegion): detected face's metadata (e.g. bounding box)
+        confidence (float): confidence score for face detection
+    """
+
     img: NDArray[Any]
     facial_area: FacialAreaRegion
     confidence: float

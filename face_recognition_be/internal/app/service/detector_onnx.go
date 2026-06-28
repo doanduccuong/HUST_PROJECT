@@ -107,18 +107,18 @@ func (d *ONNXDetector) Destroy() {
 }
 
 // DetectFaceAndMask is the standard HTTP handler entry point (accepts image.Image)
-func (d *ONNXDetector) DetectFaceAndMask(img image.Image) (bool, []int, [][]int, float32, error) {
+func (d *ONNXDetector) DetectFaceAndMask(img image.Image) (bool, []int, [][]int, float32, map[string]float32, float32, float32, int, string, string, error) {
 	// Encode Go image.Image back to JPEG bytes to pass over pipe
 	buf := new(bytes.Buffer)
 	err := jpeg.Encode(buf, img, nil)
 	if err != nil {
-		return false, nil, nil, 0, fmt.Errorf("failed to encode image to JPEG: %w", err)
+		return false, nil, nil, 0, nil, 0, 0, 0, "", "", fmt.Errorf("failed to encode image to JPEG: %w", err)
 	}
 	return d.DetectFaceAndMaskBytes(buf.Bytes())
 }
 
 // DetectFaceAndMaskBytes is the optimized WebSocket handler entry point (accepts raw image bytes)
-func (d *ONNXDetector) DetectFaceAndMaskBytes(imageBytes []byte) (bool, []int, [][]int, float32, error) {
+func (d *ONNXDetector) DetectFaceAndMaskBytes(imageBytes []byte) (bool, []int, [][]int, float32, map[string]float32, float32, float32, int, string, string, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -126,19 +126,19 @@ func (d *ONNXDetector) DetectFaceAndMaskBytes(imageBytes []byte) (bool, []int, [
 	length := uint32(len(imageBytes))
 	err := binary.Write(d.stdin, binary.BigEndian, length)
 	if err != nil {
-		return false, nil, nil, 0, fmt.Errorf("failed to write size prefix: %w", err)
+		return false, nil, nil, 0, nil, 0, 0, 0, "", "", fmt.Errorf("failed to write size prefix: %w", err)
 	}
 
 	// Write image payload
 	_, err = d.stdin.Write(imageBytes)
 	if err != nil {
-		return false, nil, nil, 0, fmt.Errorf("failed to write image payload: %w", err)
+		return false, nil, nil, 0, nil, 0, 0, 0, "", "", fmt.Errorf("failed to write image payload: %w", err)
 	}
 
 	// Read single-line JSON response terminated by newline
 	line, err := d.reader.ReadString('\n')
 	if err != nil {
-		return false, nil, nil, 0, fmt.Errorf("failed to read response from Python: %w", err)
+		return false, nil, nil, 0, nil, 0, 0, 0, "", "", fmt.Errorf("failed to read response from Python: %w", err)
 	}
 
 	// Parse JSON output
@@ -146,19 +146,25 @@ func (d *ONNXDetector) DetectFaceAndMaskBytes(imageBytes []byte) (bool, []int, [
 		Status  string `json:"status"`
 		Message string `json:"message,omitempty"`
 		Data    struct {
-			FaceDetected    bool    `json:"face_detected"`
-			MaskDetected    bool    `json:"mask_detected"`
-			MaskProbability float32 `json:"mask_probability"`
-			Bbox            []int   `json:"bbox"`
-			Landmarks       [][]int `json:"landmarks"`
+			FaceDetected    bool               `json:"face_detected"`
+			MaskDetected    bool               `json:"mask_detected"`
+			MaskProbability float32            `json:"mask_probability"`
+			Bbox            []int              `json:"bbox"`
+			Landmarks       [][]int            `json:"landmarks"`
+			Emotions        map[string]float32 `json:"emotions"`
+			CSScore         float32            `json:"cs_score"`
+			MSRScore        float32            `json:"msr_score"`
+			Age             int                `json:"age"`
+			Gender          string             `json:"gender"`
+			Race            string             `json:"race"`
 		} `json:"data,omitempty"`
 	}
 
 	if err := json.Unmarshal([]byte(line), &result); err != nil {
-		return false, nil, nil, 0, fmt.Errorf("failed to parse JSON from Python: %w. Raw line: %s", err, line)
+		return false, nil, nil, 0, nil, 0, 0, 0, "", "", fmt.Errorf("failed to parse JSON from Python: %w. Raw line: %s", err, line)
 	}
 
-	return result.Data.FaceDetected, result.Data.Bbox, result.Data.Landmarks, result.Data.MaskProbability, nil
+	return result.Data.FaceDetected, result.Data.Bbox, result.Data.Landmarks, result.Data.MaskProbability, result.Data.Emotions, result.Data.CSScore, result.Data.MSRScore, result.Data.Age, result.Data.Gender, result.Data.Race, nil
 }
 
 // Verify delegates the 5-stage face matching to the Python bridge

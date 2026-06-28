@@ -114,6 +114,12 @@ export function useFaceVerificationViewModel() {
     if (originalDims[0] === 0 || originalDims[1] === 0) return;
     const ctx = canvas.getContext("2d");
 
+    // Position and size the canvas exactly matching the displayed image coordinates
+    canvas.style.left = `${img.offsetLeft}px`;
+    canvas.style.top = `${img.offsetTop}px`;
+    canvas.style.width = `${img.clientWidth}px`;
+    canvas.style.height = `${img.clientHeight}px`;
+
     canvas.width = img.clientWidth;
     canvas.height = img.clientHeight;
 
@@ -147,7 +153,31 @@ export function useFaceVerificationViewModel() {
     ctx.fillStyle = glowColor;
     ctx.fillRect(x1, y1, boxW, boxH);
 
-    if (landmarks) {
+    // Draw Adaptive Local Patches (Upper, Middle, Lower)
+    ctx.setLineDash([4, 4]);
+    ctx.lineWidth = 1.5;
+
+    // 1. Eyes & Forehead (Upper)
+    ctx.strokeStyle = "rgba(59, 130, 246, 0.7)"; // Blue
+    ctx.strokeRect(x1, y1, boxW, boxH * 0.55);
+    ctx.fillStyle = "rgba(59, 130, 246, 0.05)";
+    ctx.fillRect(x1, y1, boxW, boxH * 0.55);
+
+    // 2. Nose (Middle)
+    ctx.strokeStyle = "rgba(245, 158, 11, 0.7)"; // Orange/Amber
+    ctx.strokeRect(x1 + boxW * 0.15, y1 + boxH * 0.35, boxW * 0.70, boxH * 0.40);
+    ctx.fillStyle = "rgba(245, 158, 11, 0.05)";
+    ctx.fillRect(x1 + boxW * 0.15, y1 + boxH * 0.35, boxW * 0.70, boxH * 0.40);
+
+    // 3. Mouth & Chin (Lower)
+    ctx.strokeStyle = "rgba(16, 185, 129, 0.7)"; // Green
+    ctx.strokeRect(x1, y1 + boxH * 0.60, boxW, boxH * 0.40);
+    ctx.fillStyle = "rgba(16, 185, 129, 0.05)";
+    ctx.fillRect(x1, y1 + boxH * 0.60, boxW, boxH * 0.40);
+
+    ctx.setLineDash([]); // Reset line dash
+
+    if (landmarks && landmarks.length > 0) {
       landmarks.forEach((pt) => {
         const lx = pt[0] * scaleX;
         const ly = pt[1] * scaleY;
@@ -162,7 +192,7 @@ export function useFaceVerificationViewModel() {
     }
 
     ctx.fillStyle = color;
-    const labelText = isMasked ? "MASKED" : "UNMASKED";
+    const labelText = isMasked ? "PLASTIC SURGERY MODE" : "PS-RESISTANT SCAN";
     ctx.font = "bold 11px Inter, sans-serif";
     const textW = ctx.measureText(labelText).width;
     ctx.fillRect(x1, y1 - 20, textW + 12, 18);

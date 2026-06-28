@@ -1,104 +1,225 @@
-import cv2
+# built-in dependencies
+from typing import Any, Dict, List, Union, Optional, Sequence, IO, cast
+from collections import defaultdict
+
+# 3rd party dependencies
 import numpy as np
-from typing import Dict, List, Optional, Tuple, Union
+from numpy.typing import NDArray
+from lightphe import LightPHE
 
-# Seeded random projection matrix for deterministic mock embeddings
-# Projects 256 grayscale pixel values to 512-dimensional embedding space
-np.random.seed(42)
-_PROJECTION_MATRIX = np.random.normal(0.0, 1.0, (256, 512))
+# project dependencies
+from deepfacev2.commons import image_utils
+from deepfacev2.modules import modeling, detection, preprocessing
+from deepfacev2.models.FacialRecognition import FacialRecognition
+from deepfacev2.modules.normalization import normalize_embedding_l2, normalize_embedding_minmax
+from deepfacev2.modules.encryption import encrypt_embeddings
+from deepfacev2.modules.exceptions import SpoofDetected
+from deepfacev2.commons.logger import Logger
 
-def _generate_mock_embedding(region_img: np.ndarray) -> np.ndarray:
-    """
-    Generates a deterministic 512-D unit vector from an image region.
-    Guarantees that identical images produce identical vectors, and similar images
-    produce highly correlated vectors, making mock verification realistic.
-    """
-    # Downsample to 16x16 and convert to grayscale
-    resized = cv2.resize(region_img, (16, 16), interpolation=cv2.INTER_AREA)
-    gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
-    
-    # Flatten and normalize to [0, 1]
-    flat = gray.flatten().astype(np.float32) / 255.0
-    
-    # Project to 512 dimensions
-    proj = np.dot(flat, _PROJECTION_MATRIX)
-    
-    # L2 Normalization
-    norm = np.linalg.norm(proj)
-    if norm > 0:
-        proj = proj / norm
-    return proj
+logger = Logger()
 
-def represent_face(
-    face_img: np.ndarray,
-    landmarks: Optional[List[Tuple[int, int]]] = None,
-    mask_detected: bool = False
-) -> Dict[str, np.ndarray]:
+
+# pylint: disable=too-many-positional-arguments
+def represent(
+    img_path: Union[str, IO[bytes], NDArray[Any], Sequence[Union[str, NDArray[Any], IO[bytes]]]],
+    model_name: str = "VGG-Face",
+    enforce_detection: bool = True,
+    detector_backend: str = "opencv",
+    align: bool = True,
+    expand_percentage: int = 0,
+    normalization: str = "base",
+    anti_spoofing: bool = False,
+    max_faces: Optional[int] = None,
+    l2_normalize: bool = False,
+    minmax_normalize: bool = False,
+    return_face: bool = False,
+    cryptosystem: Optional[LightPHE] = None,
+) -> Union[List[Dict[str, Any]], List[List[Dict[str, Any]]]]:
     """
-    Extracts static region embeddings and dynamic FACS features.
-    
+    Represent facial images as multi-dimensional vector embeddings.
+
     Args:
-        face_img (np.ndarray): Normalized face image (BGR, 224x224).
-        landmarks (list): 5 facial landmark points.
-        mask_detected (bool): Whether a mask is worn (skips middle and lower regions if True).
-        
-    Returns:
-        Dict[str, np.ndarray]: Dictionary containing region embeddings and FACS features.
-    """
-    h, w, _ = face_img.shape
-    
-    # 1. Slice Static Multi-regions
-    # Upper Face: Forehead and eyes (top 35%)
-    upper_region = face_img[0:int(h * 0.35), :]
-    e_upper = _generate_mock_embedding(upper_region)
-    
-    e_middle = np.zeros(512, dtype=np.float32)
-    e_lower = np.zeros(512, dtype=np.float32)
-    
-    if not mask_detected:
-        # Middle Face: Nose and upper cheeks (35% to 65%)
-        middle_region = face_img[int(h * 0.35):int(h * 0.65), :]
-        e_middle = _generate_mock_embedding(middle_region)
-        
-        # Lower Face: Mouth and chin (bottom 35%)
-        lower_region = face_img[int(h * 0.65):h, :]
-        e_lower = _generate_mock_embedding(lower_region)
+        img_path (str, np.ndarray, or Sequence[Union[str, np.ndarray]]):
+            The exact path to the image, a numpy array in BGR format,
+            a base64 encoded image, or a sequence of these.
+            If the source image contains multiple faces,
+            the result will include information for each detected face.
 
-    # 2. Extract Dynamic FACS (Facial Action Coding System) Features
-    # Using eye/mouth distance ratio as simple facial expression indicators
-    e_dynamic = np.zeros(128, dtype=np.float32)
-    
-    if landmarks and len(landmarks) >= 5:
-        # Left eye (0), right eye (1), nose (2), mouth left (3), mouth right (4)
-        le, re, nose, ml, mr = landmarks[0], landmarks[1], landmarks[2], landmarks[3], landmarks[4]
-        
-        # Eye width
-        eye_dist = np.sqrt((re[0] - le[0])**2 + (re[1] - le[1])**2)
-        # Mouth width
-        mouth_width = np.sqrt((mr[0] - ml[0])**2 + (mr[1] - ml[1])**2)
-        # Nose to mouth height
-        nose_mouth_dist = np.sqrt(((ml[0]+mr[0])/2.0 - nose[0])**2 + ((ml[1]+mr[1])/2.0 - nose[1])**2)
-        
-        # Ratios (independent of face distance)
-        mouth_ratio = mouth_width / eye_dist if eye_dist > 0 else 1.0
-        exp_ratio = nose_mouth_dist / eye_dist if eye_dist > 0 else 1.0
-        
-        # Populate dynamic embedding
-        e_dynamic[0] = float(mouth_ratio)
-        e_dynamic[1] = float(exp_ratio)
-        
-        # Add a deterministic random projection to fill up the 128 vector
-        np.random.seed(int(mouth_ratio * 1000) % 1000)
-        e_dynamic[2:] = np.random.normal(0.0, 0.1, 126)
-        
-        # L2 normalize e_dynamic
-        norm = np.linalg.norm(e_dynamic)
-        if norm > 0:
-            e_dynamic = e_dynamic / norm
-            
-    return {
-        "e_upper": e_upper,
-        "e_middle": e_middle,
-        "e_lower": e_lower,
-        "e_dynamic": e_dynamic
-    }
+        model_name (str): Model for face recognition. Options: VGG-Face, Facenet, Facenet512,
+            OpenFace, DeepFace, DeepID, Dlib, ArcFace, SFace and GhostFaceNet
+
+        enforce_detection (boolean): If no face is detected in an image, raise an exception.
+            Default is True. Set to False to avoid the exception for low-resolution images.
+
+        detector_backend (string): face detector backend. Options: 'opencv', 'retinaface',
+            'mtcnn', 'ssd', 'dlib', 'mediapipe', 'yolov8n', 'yolov8m', 'yolov8l', 'yolov11n',
+            'yolov11s', 'yolov11m', 'yolov11l', 'yolov12n', 'yolov12s', 'yolov12m', 'yolov12l'
+            'centerface' or 'skip'.
+
+        align (boolean): Perform alignment based on the eye positions.
+
+        expand_percentage (int): expand detected facial area with a percentage (default is 0).
+
+        normalization (string): Normalize the input image before feeding it to the model.
+            Default is base. Options: base, raw, Facenet, Facenet2018, VGGFace, VGGFace2, ArcFace
+
+        anti_spoofing (boolean): Flag to enable anti spoofing (default is False).
+
+        max_faces (int): Set a limit on the number of faces to be processed (default is None).
+
+        l2_normalize (bool): Flag to enable L2 normalization (unit vector normalization)
+            of the output embeddings
+
+        minmax_normalize (bool): Flag to enable min-max normalization of the output embeddings
+            to the range [0, 1].
+
+        return_face (bool): If True, the detected face images will also be returned along
+            with embeddings. Default is False.
+
+        cryptosystem (LightPHE): An instance of a partially homomorphic encryption system
+            to encrypt the output embeddings. If provided, the embeddings will be encrypted
+            using the specified cryptosystem. Then, you will be able to perform homomorphic
+            operations on the encrypted embeddings without decrypting them first.
+            Check out the repo to find out more: https://github.com/serengil/lightphe
+
+    Returns:
+        results (List[Dict[str, Any]] or List[Dict[str, Any]]): A list of dictionaries.
+            Result type becomes List of List of Dict if batch input passed.
+            Each containing the following fields:
+
+        - embedding (List[float]): Multidimensional vector representing facial features.
+            The number of dimensions varies based on the reference model
+            (e.g., FaceNet returns 128 dimensions, VGG-Face returns 4096 dimensions).
+        - facial_area (dict): Detected facial area by face detection in dictionary format.
+            Contains 'x' and 'y' as the left-corner point, and 'w' and 'h'
+            as the width and height. If `detector_backend` is set to 'skip', it represents
+            the full image area and is nonsensical.
+        - face_confidence (float): Confidence score of face detection. If `detector_backend` is set
+            to 'skip', the confidence will be 0 and is nonsensical.
+        - encrypted_embedding (List[Any]): Encrypted multidimensional vector representing
+            facial features. This field is included only if a `cryptosystem` is provided.
+    """
+    resp_objs = []
+
+    model: FacialRecognition = modeling.build_model(
+        task="facial_recognition", model_name=model_name
+    )
+
+    # Handle list of image paths or 4D numpy array
+    if isinstance(img_path, list):
+        images = img_path
+    elif isinstance(img_path, np.ndarray) and img_path.ndim == 4:
+        images = [img_path[i] for i in range(img_path.shape[0])]
+    else:
+        images = [img_path]
+
+    batch_images, batch_regions, batch_confidences, batch_indexes = [], [], [], []
+
+    for idx, single_img_path in enumerate(images):
+        # we have run pre-process in verification. so, skip if it is coming from verify.
+        target_size = model.input_shape
+        if detector_backend != "skip":
+            # Images are returned in RGB format.
+            img_objs: List[Dict[str, Any]] = cast(
+                List[Dict[str, Any]],
+                detection.extract_faces(
+                    img_path=single_img_path,
+                    detector_backend=detector_backend,
+                    grayscale=False,
+                    enforce_detection=enforce_detection,
+                    align=align,
+                    expand_percentage=expand_percentage,
+                    anti_spoofing=anti_spoofing,
+                    max_faces=max_faces,
+                ),
+            )
+        else:  # skip
+            # Try load. If load error, will raise exception internal
+            img, _ = image_utils.load_image(single_img_path)
+
+            if len(img.shape) != 3:
+                raise ValueError(f"Input img must be 3 dimensional but it is {img.shape}")
+
+            # Convert to RGB format to keep compatability with `extract_faces`.
+            img = img[:, :, ::-1]
+
+            # make dummy region and confidence to keep compatibility with `extract_faces`
+            img_objs = [
+                {
+                    "face": img,
+                    "facial_area": {"x": 0, "y": 0, "w": img.shape[0], "h": img.shape[1]},
+                    "confidence": 0,
+                }
+            ]
+        # ---------------------------------
+
+        if max_faces is not None and max_faces < len(img_objs):
+            # sort as largest facial areas come first
+            img_objs = sorted(
+                img_objs,
+                key=lambda img_obj: img_obj["facial_area"]["w"] * img_obj["facial_area"]["h"],
+                reverse=True,
+            )
+            # discard rest of the items
+            img_objs = img_objs[0:max_faces]
+
+        for img_obj in img_objs:
+            if anti_spoofing is True and img_obj.get("is_real", True) is False:
+                raise SpoofDetected("Spoof detected in the given image.")
+
+            img = img_obj["face"]
+
+            # rgb to bgr
+            img = img[:, :, ::-1]
+
+            region = img_obj["facial_area"]
+            confidence = img_obj["confidence"]
+
+            # resize to expected shape of ml model
+            img = preprocessing.resize_image(
+                img=img,
+                # thanks to DeepId (!)
+                target_size=(target_size[1], target_size[0]),
+            )
+
+            # custom normalization
+            img = preprocessing.normalize_input(img=img, normalization=normalization)
+
+            batch_images.append(img)
+            batch_regions.append(region)
+            batch_confidences.append(confidence)
+            batch_indexes.append(idx)
+
+    # Convert list of images to a numpy array for batch processing
+    batch_images_np = np.concatenate(batch_images, axis=0)
+
+    # Forward pass through the model for the entire batch
+    embeddings = model.forward(batch_images_np)
+
+    if minmax_normalize:
+        embeddings = normalize_embedding_minmax(model_name, embeddings)
+
+    if l2_normalize:
+        embeddings = normalize_embedding_l2(embeddings)
+
+    encrypted_embeddings = encrypt_embeddings(embeddings, cryptosystem)
+
+    resp_objs_dict = defaultdict(list)
+    for idy, batch_index in enumerate(batch_indexes):
+        resp_obj = {
+            "embedding": embeddings if len(batch_images) == 1 else embeddings[idy],
+            "facial_area": batch_regions[idy],
+            "face_confidence": batch_confidences[idy],
+        }
+
+        if return_face:
+            resp_obj["face"] = batch_images_np[idy]
+        if cryptosystem is not None and encrypted_embeddings is not None:
+            resp_obj["encrypted_embedding"] = (
+                encrypted_embeddings if len(batch_images) == 1 else encrypted_embeddings[idy]
+            )
+        resp_objs_dict[batch_index].append(resp_obj)
+
+    resp_objs = [resp_objs_dict[idx] for idx in range(len(images))]
+
+    return resp_objs[0] if len(images) == 1 else resp_objs

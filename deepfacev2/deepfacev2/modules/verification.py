@@ -1,77 +1,747 @@
+# built-in dependencies
+import time
+from typing import Any, Dict, Optional, Union, List, Tuple, IO, cast
+import math
+
+# 3rd party dependencies
 import numpy as np
-from typing import Dict, Any
+from numpy.typing import NDArray
 
-def cosine_similarity(v1: np.ndarray, v2: np.ndarray) -> float:
-    """Calculates cosine similarity between two 1D vectors."""
-    dot = np.dot(v1, v2)
-    norm1 = np.linalg.norm(v1)
-    norm2 = np.linalg.norm(v2)
-    if norm1 > 0 and norm2 > 0:
-        return float(dot / (norm1 * norm2))
-    return 0.0
+# project dependencies
+from deepfacev2.modules import representation, detection, modeling
+from deepfacev2.models.FacialRecognition import FacialRecognition
+from deepfacev2.commons.logger import Logger
+from deepfacev2.config.confidence import confidences
+from deepfacev2.config.threshold import thresholds
+from deepfacev2.modules.exceptions import (
+    SpoofDetected,
+    DimensionMismatchError,
+    DataTypeError,
+    InvalidEmbeddingsShapeError,
+)
 
-def verify_adaptive(
-    current_embeddings: Dict[str, np.ndarray],
-    gallery_embeddings: Dict[str, np.ndarray],
-    mask_detected: bool,
-    threshold: float = 0.65
+logger = Logger()
+
+
+# pylint: disable=too-many-positional-arguments, no-else-return
+def verify(
+    img1_path: Union[str, NDArray[Any], List[float], IO[bytes]],
+    img2_path: Union[str, NDArray[Any], List[float], IO[bytes]],
+    model_name: str = "VGG-Face",
+    detector_backend: str = "opencv",
+    distance_metric: str = "cosine",
+    enforce_detection: bool = True,
+    align: bool = True,
+    expand_percentage: int = 0,
+    normalization: str = "base",
+    silent: bool = False,
+    threshold: Optional[float] = None,
+    anti_spoofing: bool = False,
 ) -> Dict[str, Any]:
     """
-    Computes adaptive multi-level cosine similarities and weights them.
-    
+    Verify if an image pair represents the same person or different persons.
+
+    The verification function converts facial images to vectors and calculates the similarity
+    between those vectors. Vectors of images of the same person should exhibit higher similarity
+    (or lower distance) than vectors of images of different persons.
+
     Args:
-        current_embeddings (dict): Embeddings of current face.
-        gallery_embeddings (dict): Embeddings of gallery reference face.
-        mask_detected (bool): Mask-wearing status.
-        threshold (float): Similarity threshold for verification.
-        
+        img1_path (str or np.ndarray or List[float]): Path to the first image.
+            Accepts exact image path as a string, numpy array (BGR), base64 encoded images
+            or pre-calculated embeddings.
+
+        img2_path (str or np.ndarray or  or List[float]): Path to the second image.
+            Accepts exact image path as a string, numpy array (BGR), base64 encoded images
+            or pre-calculated embeddings.
+
+        model_name (str): Model for face recognition. Options: VGG-Face, Facenet, Facenet512,
+            OpenFace, DeepFace, DeepID, Dlib, ArcFace, SFace and GhostFaceNet (default is VGG-Face).
+
+        detector_backend (string): face detector backend. Options: 'opencv', 'retinaface',
+            'mtcnn', 'ssd', 'dlib', 'mediapipe', 'yolov8n', 'yolov8m', 'yolov8l', 'yolov11n',
+            'yolov11s', 'yolov11m', 'yolov11l', 'yolov12n', 'yolov12s', 'yolov12m', 'yolov12l'
+            'centerface' or 'skip' (default is opencv)
+
+        distance_metric (string): Metric for measuring similarity. Options: 'cosine',
+            'euclidean', 'euclidean_l2', 'angular' (default is cosine).
+
+        enforce_detection (boolean): If no face is detected in an image, raise an exception.
+            Set to False to avoid the exception for low-resolution images (default is True).
+
+        align (bool): Flag to enable face alignment (default is True).
+
+        expand_percentage (int): expand detected facial area with a percentage (default is 0).
+
+        normalization (string): Normalize the input image before feeding it to the model.
+            Options: base, raw, Facenet, Facenet2018, VGGFace, VGGFace2, ArcFace (default is base)
+
+        silent (boolean): Suppress or allow some log messages for a quieter analysis process
+            (default is False).
+
+        threshold (float): Specify a threshold to determine whether a pair represents the same
+            person or different individuals. This threshold is used for comparing distances.
+            If left unset, default pre-tuned threshold values will be applied based on the specified
+            model name and distance metric (default is None).
+
+        anti_spoofing (boolean): Flag to enable anti spoofing (default is False).
+
     Returns:
-        dict: Detailed verification results and weights.
+        result (dict): A dictionary containing verification results.
+
+        - 'verified' (bool): Indicates whether the images represent the same person (True)
+            or different persons (False).
+
+        - 'distance' (float): The distance measure between the face vectors.
+            A lower distance indicates higher similarity.
+
+        - 'threshold' (float): The maximum threshold used for verification.
+            If the distance is below this threshold, the images are considered a match.
+
+        - 'confidence' (float): Confidence score indicating the likelihood that the images
+            represent the same person. The score is between 0 and 100, where higher values
+            indicate greater confidence in the verification result.
+
+        - 'model' (str): The chosen face recognition model.
+
+        - 'similarity_metric' (str): The chosen similarity metric for measuring distances.
+
+        - 'facial_areas' (dict): Rectangular regions of interest for faces in both images.
+            - 'img1': {'x': int, 'y': int, 'w': int, 'h': int}
+                    Region of interest for the first image.
+            - 'img2': {'x': int, 'y': int, 'w': int, 'h': int}
+                    Region of interest for the second image.
+
+        - 'time' (float): Time taken for the verification process in seconds.
     """
-    # 1. Cosine Similarities for each region
-    s_upper = cosine_similarity(current_embeddings["e_upper"], gallery_embeddings["e_upper"])
-    
-    s_middle = 0.0
-    s_lower = 0.0
-    if not mask_detected:
-        s_middle = cosine_similarity(current_embeddings["e_middle"], gallery_embeddings["e_middle"])
-        s_lower = cosine_similarity(current_embeddings["e_lower"], gallery_embeddings["e_lower"])
-        
-    s_dynamic = cosine_similarity(current_embeddings["e_dynamic"], gallery_embeddings["e_dynamic"])
 
-    # 2. Adaptive Weight Configuration
-    if mask_detected:
-        # Masked: only use upper face and dynamic FACS
-        alpha_1 = 0.70 # Upper face weight
-        alpha_2 = 0.00 # Middle face (nose) weight -> 0
-        alpha_3 = 0.00 # Lower face (mouth) weight -> 0
-        beta = 0.30    # Dynamic FACS weight
+    tic = time.time()
+
+    model: FacialRecognition = modeling.build_model(
+        task="facial_recognition", model_name=model_name
+    )
+    dims = model.output_shape
+
+    no_facial_area = {
+        "x": None,
+        "y": None,
+        "w": None,
+        "h": None,
+        "left_eye": None,
+        "right_eye": None,
+    }
+
+    def extract_embeddings_and_facial_areas(
+        img_path: Union[str, NDArray[Any], List[float], IO[bytes]], index: int
+    ) -> Tuple[List[List[float]], List[Dict[str, Any]]]:
+        """
+        Extracts facial embeddings and corresponding facial areas from an
+        image or returns pre-calculated embeddings.
+
+        Depending on the type of img_path, the function either extracts
+        facial embeddings from the provided image
+        (via a path or NumPy array) or verifies that the input is a list of
+        pre-calculated embeddings and validates them.
+
+        Args:
+            img_path (Union[str, np.ndarray, List[float]]):
+                - A string representing the file path to an image,
+                - A NumPy array containing the image data,
+                - Or a list of pre-calculated embedding values (of type `float`).
+                - Or a file-like object containing image data (e.g., bytes).
+            index (int): An index value used in error messages and logging
+            to identify the number of the image.
+
+        Returns:
+            Tuple[List[List[float]], List[dict]]:
+                - A list containing lists of facial embeddings for each detected face.
+                - A list of dictionaries where each dictionary contains facial area information.
+        """
+        if isinstance(img_path, list):
+            # given image is already pre-calculated embedding
+            if not all(isinstance(dim, (float, int)) for dim in img_path):
+
+                raise DataTypeError(
+                    f"When passing img{index}_path as a list,"
+                    " ensure that all its items are of type float."
+                )
+
+            if silent is False:
+                logger.warn(
+                    f"You passed {index}-th image as pre-calculated embeddings."
+                    "Please ensure that embeddings have been calculated"
+                    f" for the {model_name} model."
+                )
+
+            if len(img_path) != dims:
+                raise DimensionMismatchError(
+                    f"embeddings of {model_name} should have {dims} dimensions,"
+                    f" but {index}-th image has {len(img_path)} dimensions input"
+                )
+
+            img_embeddings = [img_path]
+            img_facial_areas = [no_facial_area]
+        else:
+            try:
+                img_embeddings, img_facial_areas = __extract_faces_and_embeddings(
+                    img_path=img_path,
+                    model_name=model_name,
+                    detector_backend=detector_backend,
+                    enforce_detection=enforce_detection,
+                    align=align,
+                    expand_percentage=expand_percentage,
+                    normalization=normalization,
+                    anti_spoofing=anti_spoofing,
+                )
+            except ValueError as err:
+                raise ValueError(f"Exception while processing img{index}_path") from err
+        return img_embeddings, img_facial_areas
+
+    img1_embeddings, img1_facial_areas = extract_embeddings_and_facial_areas(img1_path, 1)
+    img2_embeddings, img2_facial_areas = extract_embeddings_and_facial_areas(img2_path, 2)
+
+    min_distance, min_idx, min_idy = float("inf"), None, None
+    for idx, img1_embedding in enumerate(img1_embeddings):
+        for idy, img2_embedding in enumerate(img2_embeddings):
+            distance: float = float(
+                cast(np.float64, find_distance(img1_embedding, img2_embedding, distance_metric))
+            )
+            if distance < min_distance:
+                min_distance, min_idx, min_idy = distance, idx, idy
+
+    # find the face pair with minimum distance
+    pretuned_threshold = find_threshold(model_name, distance_metric)
+    threshold = threshold or pretuned_threshold
+    distance = float(min_distance)
+    confidence = find_confidence(
+        distance=distance,
+        model_name=model_name,
+        distance_metric=distance_metric,
+        verified=distance <= pretuned_threshold,
+    )
+    facial_areas = (
+        no_facial_area if min_idx is None else img1_facial_areas[min_idx],
+        no_facial_area if min_idy is None else img2_facial_areas[min_idy],
+    )
+
+    toc = time.time()
+
+    resp_obj = {
+        "verified": distance <= threshold,
+        "distance": distance,
+        "threshold": threshold,
+        "confidence": confidence,
+        "model": model_name,
+        "detector_backend": detector_backend,
+        "similarity_metric": distance_metric,
+        "facial_areas": {"img1": facial_areas[0], "img2": facial_areas[1]},
+        "time": round(toc - tic, 2),
+    }
+
+    return resp_obj
+
+
+def __extract_faces_and_embeddings(
+    img_path: Union[str, NDArray[Any], IO[bytes]],
+    model_name: str = "VGG-Face",
+    detector_backend: str = "opencv",
+    enforce_detection: bool = True,
+    align: bool = True,
+    expand_percentage: int = 0,
+    normalization: str = "base",
+    anti_spoofing: bool = False,
+) -> Tuple[List[List[float]], List[Dict[str, Any]]]:
+    """
+    Extract facial areas and find corresponding embeddings for given image
+    Returns:
+        embeddings (List[float])
+        facial areas (List[dict])
+    """
+    embeddings = []
+    facial_areas = []
+
+    img_objs: List[Dict[str, Any]] = cast(
+        List[Dict[str, Any]],
+        detection.extract_faces(
+            img_path=img_path,
+            detector_backend=detector_backend,
+            grayscale=False,
+            enforce_detection=enforce_detection,
+            align=align,
+            expand_percentage=expand_percentage,
+            anti_spoofing=anti_spoofing,
+        ),
+    )
+
+    # find embeddings for each face
+    for img_obj in img_objs:
+        if anti_spoofing is True and img_obj.get("is_real", True) is False:
+            raise SpoofDetected("Spoof detected in given image.")
+        img_embedding_obj = representation.represent(
+            img_path=img_obj["face"][:, :, ::-1],  # make compatible with direct representation call
+            model_name=model_name,
+            enforce_detection=enforce_detection,
+            detector_backend="skip",
+            align=align,
+            normalization=normalization,
+        )
+        # already extracted face given, safe to access its 1st item
+        img_embedding_obj = cast(List[Dict[str, Any]], img_embedding_obj)
+        img_embedding = img_embedding_obj[0]["embedding"]
+        embeddings.append(img_embedding)
+        facial_areas.append(img_obj["facial_area"])
+
+    return embeddings, facial_areas
+
+
+def find_cosine_distance(
+    source_representation: Union[NDArray[Any], List[float]],
+    test_representation: Union[NDArray[Any], List[float]],
+) -> Union[np.float64, NDArray[Any]]:
+    """
+    Find cosine distance between two given vectors or batches of vectors.
+    Args:
+        source_representation (np.ndarray or list): 1st vector or batch of vectors.
+        test_representation (np.ndarray or list): 2nd vector or batch of vectors.
+    Returns
+        np.float64 or np.ndarray: Calculated cosine distance(s).
+        It returns a np.float64 for single embeddings and np.ndarray for batch embeddings.
+    """
+    # Convert inputs to numpy arrays if necessary
+    source_representation = np.asarray(source_representation)
+    test_representation = np.asarray(test_representation)
+
+    if source_representation.ndim == 1 and test_representation.ndim == 1:
+        # single embedding
+        dot_product = np.dot(source_representation, test_representation)
+        source_norm = np.linalg.norm(source_representation)
+        test_norm = np.linalg.norm(test_representation)
+        distances = 1 - dot_product / (source_norm * test_norm)
+        return cast(np.float64, distances)
+    elif source_representation.ndim == 2 and test_representation.ndim == 2:
+        # list of embeddings (batch)
+        source_normed = l2_normalize(source_representation, axis=1)  # (N, D)
+        test_normed = l2_normalize(test_representation, axis=1)  # (M, D)
+        cosine_similarities = np.dot(test_normed, source_normed.T)  # (M, N)
+        distances = 1 - cosine_similarities
+        return cast(NDArray[Any], distances)
     else:
-        # Normal unmasked: balanced weight configuration
-        alpha_1 = 0.30
-        alpha_2 = 0.25
-        alpha_3 = 0.25
-        beta = 0.20
+        raise InvalidEmbeddingsShapeError(
+            f"Embeddings must be 1D or 2D, but received "
+            f"source shape: {source_representation.shape}, test shape: {test_representation.shape}"
+        )
 
-    # 3. Decision Fusion Score
-    score = (alpha_1 * s_upper) + (alpha_2 * s_middle) + (alpha_3 * s_lower) + (beta * s_dynamic)
+
+def find_angular_distance(
+    source_representation: Union[NDArray[Any], List[float]],
+    test_representation: Union[NDArray[Any], List[float]],
+) -> Union[np.float64, NDArray[Any]]:
+    """
+    Find angular distance between two vectors or batches of vectors.
+
+    Args:
+        source_representation (np.ndarray or list): 1st vector or batch of vectors.
+        test_representation (np.ndarray or list): 2nd vector or batch of vectors.
+
+    Returns:
+        np.float64 or np.ndarray: angular distance(s).
+            Returns a np.float64 for single embeddings and np.ndarray for batch embeddings.
+    """
+
+    # calculate cosine similarity first
+    # then convert to angular distance
+    source_representation = np.asarray(source_representation)
+    test_representation = np.asarray(test_representation)
+
+    if source_representation.ndim == 1 and test_representation.ndim == 1:
+        # single embedding
+        dot_product = np.dot(source_representation, test_representation)
+        source_norm = np.linalg.norm(source_representation)
+        test_norm = np.linalg.norm(test_representation)
+        similarity = dot_product / (source_norm * test_norm)
+        distances = np.arccos(similarity) / np.pi
+        return cast(np.float64, distances)
+    elif source_representation.ndim == 2 and test_representation.ndim == 2:
+        # list of embeddings (batch)
+        source_normed = l2_normalize(source_representation, axis=1)  # (N, D)
+        test_normed = l2_normalize(test_representation, axis=1)  # (M, D)
+        similarity = np.dot(test_normed, source_normed.T)  # (M, N)
+        distances = np.arccos(similarity) / np.pi
+        return cast(NDArray[Any], distances)
+    else:
+        raise ValueError(
+            f"Embeddings must be 1D or 2D, but received "
+            f"source shape: {source_representation.shape}, test shape: {test_representation.shape}"
+        )
+
+
+def find_euclidean_distance(
+    source_representation: Union[NDArray[Any], List[float]],
+    test_representation: Union[NDArray[Any], List[float]],
+) -> Union[np.float64, NDArray[Any]]:
+    """
+    Find Euclidean distance between two vectors or batches of vectors.
+
+    Args:
+        source_representation (np.ndarray or list): 1st vector or batch of vectors.
+        test_representation (np.ndarray or list): 2nd vector or batch of vectors.
+
+    Returns:
+        np.float64 or np.ndarray: Euclidean distance(s).
+            Returns a np.float64 for single embeddings and np.ndarray for batch embeddings.
+    """
+    # Convert inputs to numpy arrays if necessary
+    source_representation = np.asarray(source_representation)
+    test_representation = np.asarray(test_representation)
+
+    # Single embedding case (1D arrays)
+    if source_representation.ndim == 1 and test_representation.ndim == 1:
+        distances = np.linalg.norm(source_representation - test_representation)
+        return cast(np.float64, distances)
+    # Batch embeddings case (2D arrays)
+    elif source_representation.ndim == 2 and test_representation.ndim == 2:
+        diff = (
+            source_representation[None, :, :] - test_representation[:, None, :]
+        )  # (N, D) - (M, D)  = (M, N, D)
+        distances = np.linalg.norm(diff, axis=2)  # (M, N)
+        return cast(NDArray[Any], distances)
+    else:
+        raise ValueError(
+            f"Embeddings must be 1D or 2D, but received "
+            f"source shape: {source_representation.shape}, test shape: {test_representation.shape}"
+        )
+
+
+def l2_normalize(
+    x: Union[NDArray[Any], List[float], List[List[float]]],
+    axis: Union[int, None] = None,
+    epsilon: float = 1e-10,
+) -> NDArray[Any]:
+    """
+    Normalize input vector with l2
+    Args:
+        x (np.ndarray or list): given vector
+        axis (int): axis along which to normalize
+    Returns:
+        np.ndarray: l2 normalized vector
+    """
+    # Convert inputs to numpy arrays if necessary
+    x = np.asarray(x)
+    norm = np.linalg.norm(x, axis=axis, keepdims=True)
+    return cast(NDArray[Any], x / (norm + epsilon))
+
+
+def find_distance(
+    alpha_embedding: Union[NDArray[Any], List[float]],
+    beta_embedding: Union[NDArray[Any], List[float]],
+    distance_metric: str,
+) -> Union[np.float64, NDArray[Any]]:
+    """
+    Wrapper to find the distance between vectors based on the specified distance metric.
+
+    Args:
+        alpha_embedding (np.ndarray or list): 1st vector or batch of vectors.
+        beta_embedding (np.ndarray or list): 2nd vector or batch of vectors.
+        distance_metric (str): The type of distance to compute
+            ('cosine', 'euclidean', 'euclidean_l2', or 'angular').
+
+    Returns:
+        np.float64 or np.ndarray: The calculated distance(s).
+    """
+    # Convert inputs to numpy arrays if necessary
+    alpha_embedding = np.asarray(alpha_embedding)
+    beta_embedding = np.asarray(beta_embedding)
+
+    # Ensure that both embeddings are either 1D or 2D
+    if alpha_embedding.ndim != beta_embedding.ndim or alpha_embedding.ndim not in (1, 2):
+        raise ValueError(
+            f"Both embeddings must be either 1D or 2D, but received "
+            f"alpha shape: {alpha_embedding.shape}, beta shape: {beta_embedding.shape}"
+        )
+
+    if distance_metric == "cosine":
+        distance = find_cosine_distance(alpha_embedding, beta_embedding)
+    elif distance_metric == "angular":
+        distance = find_angular_distance(alpha_embedding, beta_embedding)
+    elif distance_metric == "euclidean":
+        distance = find_euclidean_distance(alpha_embedding, beta_embedding)
+    elif distance_metric == "euclidean_l2":
+        axis = None if alpha_embedding.ndim == 1 else 1
+        normalized_alpha = l2_normalize(alpha_embedding, axis=axis)
+        normalized_beta = l2_normalize(beta_embedding, axis=axis)
+        distance = find_euclidean_distance(normalized_alpha, normalized_beta)
+    else:
+        raise ValueError("Invalid distance_metric passed - ", distance_metric)
+    return np.round(distance, 6)
+
+
+def find_threshold(model_name: str, distance_metric: str) -> float:
+    """
+    Retrieve pre-tuned threshold values for a model and distance metric pair
+    Args:
+        model_name (str): Model for face recognition. Options: VGG-Face, Facenet, Facenet512,
+            OpenFace, DeepFace, DeepID, Dlib, ArcFace, SFace and GhostFaceNet (default is VGG-Face).
+        distance_metric (str): distance metric name. Options are cosine, euclidean
+            euclidean_l2 and angular.
+    Returns:
+        threshold (float): threshold value for that model name and distance metric
+            pair. Distances less than this threshold will be classified same person.
+    """
+    if thresholds.get(model_name) is None:
+        raise ValueError(f"Model {model_name} is not supported. ")
+
+    threshold = thresholds.get(model_name, {}).get(distance_metric)
+
+    if threshold is None:
+        raise ValueError(
+            f"Distance metric {distance_metric} is not available for model {model_name}. "
+        )
+
+    return threshold
+
+
+def __sigmoid(z: float) -> float:
+    """
+    Compute a numerically stable sigmoid-based confidence score.
+
+    This implementation avoids floating-point overflow errors that can occur
+    when computing the standard sigmoid function (1 / (1 + exp(-z))) for very
+    large positive or negative values of `z`. The computation is split based on
+    the sign of `z` to ensure numerical stability while preserving mathematical
+    equivalence.
+
+    Args:
+        z (float): Input value.
+
+    Returns:
+        float: Sigmoid output scaled to the range [0, 1].
+    """
+    if z >= 0:
+        return 1 / (1 + math.exp(-z))
+    else:
+        ez = math.exp(z)
+        return 1 * ez / (1 + ez)
+
+
+def find_confidence(
+    distance: float, model_name: str, distance_metric: str, verified: bool
+) -> float:
+    """
+    Using pre-built logistic regression model, find confidence value from distance.
+        The confidence score provides a probalistic estimate, indicating how likely
+        the classification is correct, thus giving softer, more informative measure of
+        certainty than a simple binary classification.
+
+        Configuration values are calculated in experiments/distance-to-confidence.ipynb
+    Args:
+        model_name (str): Model for face recognition. Options: VGG-Face, Facenet, Facenet512,
+            OpenFace, DeepFace, DeepID, Dlib, ArcFace, SFace and GhostFaceNet (default is VGG-Face).
+        distance_metric (str): distance metric name. Options are cosine, euclidean
+            euclidean_l2 and angular.
+        verified (bool): True if the images are classified as same person,
+            False if different persons.
+    Returns:
+        confidence (float): confidence value being same person for that model name
+            and distance metric pair. Same person classifications confidence should be
+            distributed between 51-100% and different person classifications confidence
+            should be distributed between 0-49%. The higher the confidence, the more
+            certain the model is about the classification.
+    """
+    if distance <= 0:
+        return 100.0 if verified else 0.0
+
+    if confidences.get(model_name) is None:
+        return 51 if verified else 49
+
+    config = confidences[model_name].get(distance_metric)
+
+    if config is None:
+        return 51 if verified else 49
+
+    w = config["w"]
+    b = config["b"]
+
+    normalizer = config["normalizer"]
+
+    denorm_max_true = config["denorm_max_true"]
+    denorm_min_true = config["denorm_min_true"]
+    denorm_max_false = config["denorm_max_false"]
+    denorm_min_false = config["denorm_min_false"]
+
+    if normalizer > 1:
+        distance = distance / normalizer
+
+    z = w * distance + b
+    confidence = 100 * __sigmoid(z)
+
+    # re-distribute the confidence between 0-49 for different persons, 51-100 for same persons
+    if verified:
+        min_original = denorm_min_true
+        max_original = denorm_max_true
+        min_target = max(51, min_original)
+        max_target = 100
+    else:
+        min_original = denorm_min_false
+        max_original = denorm_max_false
+        min_target = 0
+        max_target = min(49, int(max_original))
+
+    confidence_distributed = ((confidence - min_original) / (max_original - min_original)) * (
+        max_target - min_target
+    ) + min_target
+
+    # ensure confidence is within 51-100 for same persons and 0-49 for different persons
+    if verified and confidence_distributed < 51:
+        confidence_distributed = 51
+    elif not verified and confidence_distributed > 49:
+        confidence_distributed = 49
+
+    return round(confidence_distributed, 2)
+
+
+def extract_patch(img, bbox, region_type):
+    import cv2
+    x1, y1, x2, y2 = bbox
+    w = x2 - x1
+    h = y2 - y1
+    img_h, img_w = img.shape[:2]
     
-    # Force float type conversion
-    score = float(score)
+    if region_type == "eyes":
+        px1 = max(0, x1)
+        py1 = max(0, y1)
+        px2 = min(img_w, x2)
+        py2 = min(img_h, y1 + int(h * 0.55))
+    elif region_type == "nose":
+        px1 = max(0, x1 + int(w * 0.15))
+        py1 = max(0, y1 + int(h * 0.35))
+        px2 = min(img_w, x1 + int(w * 0.85))
+        py2 = min(img_h, y1 + int(h * 0.75))
+    elif region_type == "mouth":
+        px1 = max(0, x1)
+        py1 = max(0, y1 + int(h * 0.60))
+        px2 = min(img_w, x2)
+        py2 = min(img_h, y2)
+    else:
+        return img[max(0, y1):min(img_h, y2), max(0, x1):min(img_w, x2)]
+        
+    return img[py1:py2, px1:px2]
 
+
+def get_embedding_local(img):
+    import sys
+    from deepfacev2.modules import representation
+    if img is None or img.size == 0:
+        return None
+    try:
+        res = representation.represent(img_path=img, model_name="VGG-Face", detector_backend="skip", enforce_detection=False)
+        if res and len(res) > 0:
+            return res[0]["embedding"]
+    except Exception as e:
+        sys.stderr.write(f"[Python Log] Embedding extraction failed: {str(e)}\n")
+        sys.stderr.flush()
+    return None
+
+
+def cosine_distance_local(v1, v2):
+    if v1 is None or v2 is None:
+        return 1.0
+    v1 = np.array(v1)
+    v2 = np.array(v2)
+    norm1 = np.linalg.norm(v1)
+    norm2 = np.linalg.norm(v2)
+    if norm1 == 0 or norm2 == 0:
+        return 1.0
+    return float(1.0 - np.dot(v1, v2) / (norm1 * norm2))
+
+
+def verify_adaptive_patch(
+    img1_path: Union[str, NDArray[Any], List[float], IO[bytes]],
+    img2_path: Union[str, NDArray[Any], List[float], IO[bytes]]
+) -> Dict[str, Any]:
+    # 1. Call standard verify to get the global verify results and bounding boxes
+    res = verify(img1_path=img1_path, img2_path=img2_path, model_name="VGG-Face", enforce_detection=False, silent=True)
+    
+    # 2. Safely read/load the images as numpy arrays for cropping
+    import cv2
+    
+    def load_img(path):
+        if isinstance(path, np.ndarray):
+            return path
+        if isinstance(path, str):
+            with open(path, "rb") as f:
+                file_bytes = np.frombuffer(f.read(), dtype=np.uint8)
+                img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+            return img
+        return None
+        
+    img1 = load_img(img1_path)
+    img2 = load_img(img2_path)
+    
+    if img1 is None or img2 is None:
+        raise ValueError("Image path not found or could not be decoded")
+        
+    facial_areas = res.get("facial_areas", {})
+    img1_area = facial_areas.get("img1", {})
+    img2_area = facial_areas.get("img2", {})
+    
+    tx, ty, tw, th = img1_area.get("x", 0), img1_area.get("y", 0), img1_area.get("w", 0), img1_area.get("h", 0)
+    gx, gy, gw, gh = img2_area.get("x", 0), img2_area.get("y", 0), img2_area.get("w", 0), img2_area.get("h", 0)
+    
+    target_bbox = [int(tx), int(ty), int(tx + tw), int(ty + th)]
+    gallery_bbox = [int(gx), int(gy), int(gx + gw), int(gy + gh)]
+    
+    # Extract patches
+    patch1_eyes = extract_patch(img1, target_bbox, "eyes")
+    patch2_eyes = extract_patch(img2, gallery_bbox, "eyes")
+    
+    patch1_nose = extract_patch(img1, target_bbox, "nose")
+    patch2_nose = extract_patch(img2, gallery_bbox, "nose")
+    
+    patch1_mouth = extract_patch(img1, target_bbox, "mouth")
+    patch2_mouth = extract_patch(img2, gallery_bbox, "mouth")
+    
+    # Get embeddings
+    emb1_eyes = get_embedding_local(patch1_eyes)
+    emb2_eyes = get_embedding_local(patch2_eyes)
+    
+    emb1_nose = get_embedding_local(patch1_nose)
+    emb2_nose = get_embedding_local(patch2_nose)
+    
+    emb1_mouth = get_embedding_local(patch1_mouth)
+    emb2_mouth = get_embedding_local(patch2_mouth)
+    
+    # Compute local distances
+    eyes_dist = cosine_distance_local(emb1_eyes, emb2_eyes)
+    nose_dist = cosine_distance_local(emb1_nose, emb2_nose)
+    mouth_dist = cosine_distance_local(emb1_mouth, emb2_mouth)
+    
+    # Adaptive weight assignment
+    local_threshold = 0.60
+    
+    if nose_dist > local_threshold and eyes_dist <= local_threshold:
+        w_eyes, w_nose, w_mouth = 0.65, 0.05, 0.30
+    elif mouth_dist > local_threshold and eyes_dist <= local_threshold:
+        w_eyes, w_nose, w_mouth = 0.65, 0.30, 0.05
+    else:
+        w_eyes, w_nose, w_mouth = 0.40, 0.30, 0.30
+        
+    fused_distance = w_eyes * eyes_dist + w_nose * nose_dist + w_mouth * mouth_dist
+    is_verified = bool(fused_distance < local_threshold)
+    
     return {
-        "verified": score >= threshold,
-        "matching_score": score,
-        "applied_weights": {
-            "alpha_1_upper": alpha_1,
-            "alpha_2_middle": alpha_2,
-            "alpha_3_lower": alpha_3,
-            "beta_dynamic": beta
-        },
-        "similarities": {
-            "upper_face": s_upper,
-            "middle_face": s_middle,
-            "lower_face": s_lower,
-            "dynamic_facs": s_dynamic
-        }
+        "verified": is_verified,
+        "distance": float(res.get("distance", 0.0)),
+        "threshold": float(res.get("threshold", 0.0)),
+        "fused_distance": float(fused_distance),
+        "fused_threshold": float(local_threshold),
+        "eyes_distance": float(eyes_dist),
+        "nose_distance": float(nose_dist),
+        "mouth_distance": float(mouth_dist),
+        "eyes_weight": float(w_eyes),
+        "nose_weight": float(w_nose),
+        "mouth_weight": float(w_mouth),
+        "model": res.get("model", "VGG-Face"),
+        "detector_backend": res.get("detector_backend", "opencv"),
+        "similarity_metric": res.get("similarity_metric", "cosine"),
+        "target_bbox": target_bbox,
+        "gallery_bbox": gallery_bbox
     }

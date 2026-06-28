@@ -1,5 +1,28 @@
 import React from "react";
 
+const emotionEmojis = {
+  angry: "Angry",
+  disgust: "Disgust",
+  fear: "Fear",
+  happy: "Happy",
+  sad: "Sad",
+  surprise: "Surprise",
+  neutral: "Neutral",
+};
+
+const getDominantEmotion = (emotions) => {
+  if (!emotions || Object.keys(emotions).length === 0) return { name: "neutral", confidence: 0 };
+  let maxEmotion = "neutral";
+  let maxVal = -1;
+  for (const [emotion, val] of Object.entries(emotions)) {
+    if (val > maxVal) {
+      maxVal = val;
+      maxEmotion = emotion;
+    }
+  }
+  return { name: maxEmotion, confidence: maxVal };
+};
+
 export function SingleDetectTab({ viewModel }) {
   const {
     detectImg,
@@ -43,7 +66,6 @@ export function SingleDetectTab({ viewModel }) {
               </div>
             ) : (
               <label className="flex flex-col items-center justify-center gap-3 cursor-pointer w-full h-full hover:bg-slate-900/20 transition p-8 text-center">
-                <span className="text-4xl">🔍</span>
                 <span className="text-sm font-bold text-slate-300">Upload Target Photo</span>
                 <span className="text-xs text-slate-500">Click to import one image file</span>
                 <span className="text-[10px] text-slate-650">Supports JPEG, PNG (Max 10MB)</span>
@@ -79,7 +101,6 @@ export function SingleDetectTab({ viewModel }) {
                 </>
               ) : (
                 <>
-                  <span>🔍</span>
                   Run Face Detection
                 </>
               )}
@@ -89,7 +110,6 @@ export function SingleDetectTab({ viewModel }) {
 
         {detectError && (
           <div className="bg-rose-950/40 border border-rose-900/60 rounded-xl p-4 text-xs text-rose-300 flex items-center gap-3">
-            <span className="text-lg">⚠️</span>
             <p>{detectError}</p>
           </div>
         )}
@@ -106,15 +126,11 @@ export function SingleDetectTab({ viewModel }) {
             <div className="flex flex-col gap-4">
               {!detectResult.faceDetected ? (
                 <div className="bg-slate-950/40 border border-slate-900 rounded-xl p-6 text-center">
-                  <span className="text-3xl">👤</span>
                   <h3 className="text-sm font-bold text-slate-400 mt-2">No Face Detected</h3>
                 </div>
               ) : (
                 <div className="flex flex-col gap-4">
                   <div className={`p-4 rounded-xl flex items-center gap-4 ${detectResult.maskDetected ? "bg-emerald-950/40 border border-emerald-900/40" : "bg-rose-950/40 border border-rose-900/40"}`}>
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl ${detectResult.maskDetected ? "bg-emerald-500/10 text-emerald-400 animate-pulse" : "bg-rose-500/10 text-rose-400"}`}>
-                      {detectResult.maskDetected ? "🛡️" : "🚨"}
-                    </div>
                     <div>
                       <h4 className={`text-md font-black tracking-wider uppercase ${detectResult.maskDetected ? "text-emerald-400" : "text-rose-400"}`}>
                         {detectResult.maskDetected ? "MASK DETECTED" : "NO MASK"}
@@ -146,6 +162,72 @@ export function SingleDetectTab({ viewModel }) {
             </div>
           )}
         </div>
+
+        {/* DeepFace Facial Analytics Card */}
+        {detectResult && detectResult.faceDetected && (
+          <div className="bg-slate-900/40 border border-slate-900 rounded-2xl p-5 shadow-lg backdrop-blur-sm relative overflow-hidden">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4 border-b border-slate-900 pb-2 flex items-center justify-between">
+              <span>DeepFace Facial Attributes</span>
+              <span className="text-[10px] text-cyan-400 bg-cyan-950/50 px-2 py-0.5 rounded-full border border-cyan-900">Standard API</span>
+            </h2>
+
+            <div className="flex flex-col gap-4">
+              {/* Dominant Emotion */}
+              <div className="bg-slate-950/50 rounded-xl p-3.5 border border-slate-850 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Dominant Emotion</span>
+                  <h4 className="text-sm font-black text-slate-200 mt-1 capitalize">
+                    {emotionEmojis[getDominantEmotion(detectResult.emotions).name] || getDominantEmotion(detectResult.emotions).name}
+                  </h4>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-mono font-bold text-cyan-400 bg-cyan-950/30 px-2.5 py-1 rounded-lg border border-cyan-900/50">
+                    {getDominantEmotion(detectResult.emotions).confidence.toFixed(1)}% Conf
+                  </span>
+                </div>
+              </div>
+
+              {/* Age */}
+              <div className="bg-slate-950/50 rounded-xl p-3.5 border border-slate-850 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Estimated Age</span>
+                  <h4 className="text-sm font-black text-slate-200 mt-1">
+                    {detectResult.age} years old
+                  </h4>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-500">Regression Model</span>
+                </div>
+              </div>
+
+              {/* Gender */}
+              <div className="bg-slate-950/50 rounded-xl p-3.5 border border-slate-850 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Gender Classification</span>
+                  <h4 className="text-sm font-black text-slate-200 mt-1 capitalize">
+                    {detectResult.gender === "Man" ? "Man" : detectResult.gender === "Woman" ? "Woman" : detectResult.gender}
+                  </h4>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-500">Binary Classifier</span>
+                </div>
+              </div>
+
+              {/* Race */}
+              <div className="bg-slate-950/50 rounded-xl p-3.5 border border-slate-850 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Dominant Race / Ethnicity</span>
+                  <h4 className="text-sm font-black text-slate-200 mt-1 capitalize">
+                    {detectResult.race}
+                  </h4>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-500">Multi-class Model</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Coordinates Telemetry */}
         <div className="bg-slate-900/40 border border-slate-900 rounded-2xl p-5 shadow-lg backdrop-blur-sm flex-1 flex flex-col">

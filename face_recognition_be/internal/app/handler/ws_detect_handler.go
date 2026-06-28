@@ -60,7 +60,7 @@ func (h *WSDetectHandler) HandleWS(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Run inference directly using raw WebSocket payload bytes
-		faceDetected, bbox, landmarks, maskProb, err := h.detector.DetectFaceAndMaskBytes(payload)
+		faceDetected, bbox, landmarks, maskProb, emotions, csScore, msrScore, age, gender, race, err := h.detector.DetectFaceAndMaskBytes(payload)
 		if err != nil {
 			conn.WriteJSON(dto.DetectResponse{
 				Status:  "error",
@@ -80,6 +80,12 @@ func (h *WSDetectHandler) HandleWS(w http.ResponseWriter, r *http.Request) {
 					MaskProbability: maskProb,
 					BBox:            bbox,
 					Landmarks:        landmarks,
+					Emotions:        emotions,
+					CSScore:         csScore,
+					MSRScore:        msrScore,
+					Age:             age,
+					Gender:          gender,
+					Race:            race,
 				},
 			},
 		}

@@ -74,8 +74,8 @@ func (h *DetectHandler) Detect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Call Stage 1 Detect Face and Mask
-	faceDetected, bbox, landmarks, maskProb, err := h.detector.DetectFaceAndMask(img)
+	// Call Stage 1 Detect Face and Mask + Emotions + CS + MSR
+	faceDetected, bbox, landmarks, maskProb, emotions, csScore, msrScore, age, gender, race, err := h.detector.DetectFaceAndMask(img)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(dto.DetectResponse{
@@ -98,6 +98,12 @@ func (h *DetectHandler) Detect(w http.ResponseWriter, r *http.Request) {
 				MaskProbability: maskProb,
 				BBox:            bbox,
 				Landmarks:        landmarks,
+				Emotions:        emotions,
+				CSScore:         csScore,
+				MSRScore:        msrScore,
+				Age:             age,
+				Gender:          gender,
+				Race:            race,
 			},
 		},
 	}
