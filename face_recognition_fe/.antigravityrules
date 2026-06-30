@@ -1,7 +1,0 @@
-# AI Agent Guidelines (face_recognition_fe)
-
-1. Review and follow the Clean Architecture directory structure and data flow rules defined in `AGENTS.md`.
-2. Do not write API fetch, WebSocket listener, or complex canvas overlay drawing code directly in UI components or `page.js`. Move them to ViewModels (`src/viewmodels/`) or DataSources (`src/data/datasources/`).
-3. Use Zod schemas in `src/data/dto/` to validate API responses.
-4. Ensure all mappers provide safe fallback defaults.
-5. Run `pnpm run build` to verify changes before concluding tasks.

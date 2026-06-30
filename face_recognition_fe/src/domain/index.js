@@ -1,13 +1,4 @@
-import { FaceDetection } from "./models/face-detection";
-import { FaceVerification } from "./models/face-verification";
-import { IFaceRecognitionRepository } from "./repositories/face-recognition-repository.interface";
-import { DetectFaceUseCase } from "./usecases/detect-face.usecase";
-import { VerifyFacesUseCase } from "./usecases/verify-faces.usecase";
-
-export {
-  FaceDetection,
-  FaceVerification,
-  IFaceRecognitionRepository,
-  DetectFaceUseCase,
-  VerifyFacesUseCase,
-};
+export { Customer } from "./models/customer";
+export { CustomerRepository } from "./repositories/customer.repository";
+export { CheckinUseCase } from "./usecases/checkin.usecase";
+export { RegisterUseCase } from "./usecases/register.usecase";

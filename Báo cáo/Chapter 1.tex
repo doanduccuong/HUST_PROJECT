@@ -4,49 +4,62 @@
 \setcounter{subsection}{0}
 \setcounter{figure}{0}
 \setcounter{table}{0}
+\subsection*{1.1. Đặt vấn đề}
+\addcontentsline{toc}{subsection}{\numberline{}1.1. Đặt vấn đề}
 
-\subsection{Bối cảnh và tính cấp thiết của đề tài}
-Trong kỷ nguyên số hóa hiện nay, công nghệ nhận diện và xác thực khuôn mặt (Face Verification/Recognition) đã trở thành một phần không thể thiếu trong nhiều lĩnh vực quan trọng như an ninh biên giới, giao dịch ngân hàng (e-KYC), quản lý nhân sự và bảo mật thiết bị cá nhân. Các thuật toán học sâu hiện đại, tiêu biểu là các kiến trúc được tích hợp trong thư viện DeepFace (như VGG-Face, FaceNet, ArcFace), đã đạt được độ chính xác vượt bậc trong các điều kiện chụp thông thường, thậm chí vượt qua cả khả năng nhận diện của con người trong một số tập thử nghiệm tiêu chuẩn.
+Trong kỷ nguyên số hóa và cá nhân hóa trải nghiệm khách hàng, các hệ thống Quản lý Quan hệ Khách hàng (CRM - Customer Relationship Management) đóng vai trò then chốt trong việc định hình chiến lược kinh doanh của doanh nghiệp. Để nâng cao chất lượng dịch vụ, việc nhận dạng khách hàng nhanh chóng, tự động và không xâm lấn tại điểm chạm đầu tiên (quầy đón tiếp, cổng vào cửa hàng) trở thành một nhu cầu cấp thiết. Trong số các công nghệ sinh trắc học, nhận dạng khuôn mặt (Face Recognition) nổi lên như một giải pháp tối ưu nhờ tính tiện lợi, thân thiện và khả năng tự động hóa cao mà không yêu cầu sự tương tác vật lý chủ động từ phía khách hàng.
 
-Tuy nhiên, sự phát triển mạnh mẽ của ngành công nghiệp phẫu thuật thẩm mỹ (Plastic Surgery) toàn cầu đã đặt ra một thách thức sinh trắc học nghiêm trọng và chưa được giải quyết triệt để. Các can thiệp phẫu thuật thẩm mỹ hiện đại — bao gồm nâng mũi (rhinoplasty), gọt hàm (jaw shaving), cắt mí (blepharoplasty) hay độn cằm (chin augmentation) — trực tiếp làm thay đổi cấu trúc hình học phi tuyến tính và kết cấu mô mềm của khuôn mặt. Sự thay đổi diện mạo có chủ đích này làm phá vỡ các đặc trưng nhận diện toàn thể (holistic features) mà các hệ thống học sâu truyền thống phụ thuộc vào. Khi một người trải qua phẫu thuật thẩm mỹ, khoảng cách vector đặc trưng (facial embedding) giữa ảnh trước và sau phẫu thuật của họ thường bị kéo giãn ra rất lớn, vượt qua ngưỡng chấp nhận của hệ thống, dẫn đến việc hệ thống từ chối xác thực một cách sai lệch (tăng tỷ lệ False Rejection Rate - FRR).
+Tuy nhiên, các hệ thống nhận dạng khuôn mặt truyền thống hiện nay đang phải đối mặt với một thách thức thực tế vô cùng lớn: sự thay đổi diện mạo do phẫu thuật thẩm mỹ (PTTM). Với sự phát triển vượt bậc và mức độ phổ biến ngày càng cao của ngành phẫu thuật thẩm mỹ (như nâng mũi, độn cằm, cắt mí, tiêm filler tạo hình môi), cấu trúc hình học và đặc trưng bề mặt của khuôn mặt khách hàng có thể bị thay đổi đáng kể chỉ sau một cuộc phẫu thuật. 
 
-Việc từ chối xác thực danh tính sau phẫu thuật thẩm mỹ không chỉ gây bất tiện lớn cho người dùng trong các hoạt động e-KYC hay check-in xuất nhập cảnh, mà còn tạo ra kẽ hở lớn cho việc giả mạo danh tính hoặc trốn tránh trách nhiệm pháp lý. Do đó, việc nghiên cứu một giải pháp cải tiến thuật toán so khớp khuôn mặt có khả năng kháng lại sự thay đổi do phẫu thuật thẩm mỹ (Plastic Surgery-Resistant Face Verification) bằng cách tối ưu hóa các phân vùng cục bộ bền vững trên khuôn mặt là vô cùng cấp thiết.
+Các mô hình học sâu nhận diện khuôn mặt phổ biến hiện nay (như FaceNet, VGG-Face, ArcFace) hầu hết được huấn luyện trên các tập dữ liệu người bình thường với giả định các đặc trưng khuôn mặt là bất biến hoặc chỉ thay đổi tuyến tính theo thời gian. Khi áp dụng các mô hình toàn khuôn mặt (Full-Face) này vào nhóm khách hàng đã qua can thiệp dao kéo, sai số cục bộ tại các vùng phẫu thuật sẽ làm biến đổi sâu sắc vector đặc trưng toàn cục (Global Embedding). Điều này dẫn đến sự sụt giảm nghiêm trọng về độ chính xác, làm tăng đáng kể Tỷ lệ từ chối sai (FRR - False Rejection Rate), gây ra trải nghiệm tồi tệ khi hệ thống CRM từ chối nhận diện chính những khách hàng thân thiết của doanh nghiệp.
 
-\subsection{Đặt vấn đề}
-Hiện nay, bài toán so khớp khuôn mặt trước và sau phẫu thuật thẩm mỹ gặp phải các thách thức kỹ thuật cốt lõi sau:
-\begin{itemize}
-    \item \textbf{Sự thất bại của các bộ trích xuất đặc trưng toàn thể (Holistic Extraction):} Các mô hình so khớp hàng đầu như VGG-Face hay ArcFace nén toàn bộ thông tin khuôn mặt thành một vector đặc trưng duy nhất. Khi một bộ phận như mũi hoặc cằm bị phẫu thuật làm thay đổi lớn, sự thay đổi cục bộ này sẽ tác động mạnh lên toàn bộ vector đặc trưng toàn cục, khiến mô hình coi đây là hai người hoàn toàn khác nhau.
-    \item \textbf{Sự khan hiếm của dữ liệu huấn luyện phẫu thuật thẩm mỹ:} Các mô hình nhận diện khuôn mặt phổ biến được huấn luyện trên các tập dữ liệu lớn chứa ảnh tự nhiên (như LFW, CASIA-WebFace). Các tập dữ liệu này hầu như không chứa các cặp ảnh trước/sau phẫu thuật thẩm mỹ của cùng một cá nhân, khiến mô hình không thể tự học cách bỏ qua các biến đổi phẫu thuật.
-    \item \textbf{Yêu cầu về giải thuật thích ứng thời gian thực (Real-time Adaptive Logic):} Hệ thống cần có khả năng tự động phân tích và phát hiện ra vùng nào trên khuôn mặt đã bị chỉnh sửa phẫu thuật để phân bổ lại trọng số so khớp, ưu tiên các vùng cấu trúc xương bất biến (như vùng mắt và trán) mà không làm tăng đáng kể độ trễ tính toán của hệ thống.
-\end{itemize}
+Xuất phát từ thực tế đó, đề tài luận văn tập trung nghiên cứu: \textbf{``Phân tích dữ liệu khách hàng sử dụng nhận dạng khuôn mặt dưới tác động của phẫu thuật thẩm mỹ''}. Nghiên cứu hướng tới việc đề xuất và triển khai phương pháp phân vùng khuôn mặt có trọng số sinh học kết hợp tiền xử lý làm mờ vùng bảo toàn hình học (Blur-Masking) và tinh chỉnh tối ưu hóa không gian vector đặc trưng (Deep Metric Fine-Tuning với Triplet Loss). Giải pháp này giúp hệ thống nhận diện bền vững hơn trước các biến đổi diện mạo do can thiệp thẩm mỹ, từ đó đảm bảo dữ liệu nhật ký ghé thăm, nhân khẩu học và cảm xúc của khách hàng được thu thập một cách chính xác, liên tục, làm nền tảng vững chắc cho việc triển khai các thuật toán phân tích hành vi khách hàng tích hợp trong hệ thống CRM.
 
-\subsection{Hạn chế của thư viện DeepFace trong bài toán phẫu thuật thẩm mỹ}
-Thư viện DeepFace (chạy trên các mô hình nền tảng như VGG-Face, FaceNet) hiện là một trong những framework so khớp khuôn mặt mã nguồn mở mạnh mẽ nhất. Tuy nhiên, khi ứng dụng trực tiếp vào bài toán xác thực sau phẫu thuật thẩm mỹ, DeepFace bộc lộ những hạn chế rõ rệt:
-\begin{itemize}
-    \item \textbf{Cơ chế ra quyết định cứng nhắc:} DeepFace chỉ thực hiện so sánh một cặp ảnh mặt đầy đủ và trả về một khoảng cách duy nhất (global distance). Cơ chế này hoàn toàn không có khả năng phân biệt giữa việc thay đổi diện mạo do phẫu thuật thẩm mỹ cục bộ và việc thay đổi do hai người khác nhau hoàn toàn.
-    \item \textbf{Hiện tượng trôi lệch điểm mốc giải phẫu (Landmark Drift):} Khi khuôn mặt bị sưng tấy nặng nề sau phẫu thuật hoặc thay đổi hình dạng hàm, các bộ dò điểm mốc (như OpenCV hay RetinaFace) dễ bị xác định sai vị trí mắt, mũi, miệng. Lỗi này làm trôi lệch bước căn chỉnh khuôn mặt (facial alignment), khiến ảnh cắt khuôn mặt đưa vào CNN bị lệch góc, làm giảm nghiêm trọng độ chính xác của vector embedding.
-    \item \textbf{Thiếu tính linh hoạt cục bộ (Local Non-invariance):} DeepFace coi trọng số của mọi vùng trên khuôn mặt là tương đương nhau trong quá trình trích xuất vector. Trong thực tế phẫu thuật thẩm mỹ, vùng mắt/trán thường có tính ổn định cao hơn rất nhiều so với vùng mũi và cằm, nhưng mô hình tĩnh của DeepFace không thể tự thích ứng với thuộc tính này.
-\end{itemize}
+\subsection*{1.2. Mục tiêu nghiên cứu}
+\addcontentsline{toc}{subsection}{\numberline{}1.2. Mục tiêu nghiên cứu}
 
-\subsection{Mục tiêu nghiên cứu}
-Đề tài hướng tới việc cải tiến thuật toán của thư viện DeepFace để tối ưu hóa độ chính xác so khớp khuôn mặt trước và sau phẫu thuật thẩm mỹ. Các mục tiêu cụ thể bao gồm:
+Để giải quyết triệt để các thách thức đặt ra trong phần đặt vấn đề, nghiên cứu này tập trung hoàn thành hai bài toán cốt lõi sau:
+
 \begin{enumerate}
-    \item Triển khai giải thuật \textbf{Tích hợp vùng cục bộ thích ứng (Adaptive Local Patch Fusion)} can thiệp trực tiếp vào quy trình so khớp của DeepFace: chia khuôn mặt thành 3 vùng cục bộ độc lập (Mắt/Trán, Mũi, Miệng/Cằm).
-    \item Phát triển thuật toán \textbf{Điều chỉnh trọng số động (Dynamic Weighting Adjustment)} để tự động nhận biết vùng bị phẫu thuật thông qua độ lệch khoảng cách Cosine, từ đó giảm trọng số của vùng phẫu thuật và tăng trọng số của vùng bất biến.
-    \item \textbf{Xây dựng hệ thống phần mềm hoàn chỉnh bao gồm Go Backend và Next.js Frontend để demo trực quan thời gian thực cơ chế khoanh vùng, tính điểm tương đồng cục bộ và đưa ra quyết định so khớp thích ứng.}
-    \item Đánh giá thực nghiệm hiệu năng của giải pháp đề xuất trên tập ảnh kiểm thử trước/sau phẫu thuật thẩm mỹ để chứng minh sự vượt trội về độ chính xác so với giải thuật DeepFace gốc.
+    \item \textbf{Bài toán 1 - Tối ưu hóa mô hình nhận dạng khuôn mặt chịu ảnh hưởng của PTTM:}
+    \begin{itemize}
+        \item Nghiên cứu phương pháp tiền xử lý và trích xuất đặc trưng phân vùng dọc (Upper, Mid, Lower) trên khuôn mặt sử dụng kỹ thuật làm mờ vùng bảo toàn hình học (Blur-Masking) để giảm thiểu tác động của các can thiệp dao kéo cục bộ.
+        \item Huấn luyện tinh chỉnh lớp chiếu đặc trưng (Feature Projector) bằng hàm mất mát Triplet Loss trên bộ dữ liệu phẫu thuật thẩm mỹ thực tế nhằm tối ưu hóa khoảng cách vector giữa các cặp ảnh trước và sau phẫu thuật của cùng một chủ thể.
+        \item Xây dựng cơ chế dung hợp điểm số (Score Fusion) có trọng số sinh học thích ứng để đưa ra quyết định nhận dạng chính xác và bền vững nhất.
+    \end{itemize}
+    
+    \item \textbf{Bài toán 2 - Phân tích dữ liệu hành vi và cảm xúc khách hàng trong hệ thống CRM:}
+    \begin{itemize}
+        \item Xây dựng module tự động phân tích nhân khẩu học (ước lượng tuổi, giới tính) và phân tích trạng thái cảm xúc (Emotion Recognition) của khách hàng ngay tại thời điểm check-in.
+        \item Thiết lập CSDL lưu trữ nhật ký ghé thăm (check-in logs) đồng bộ để lưu giữ dòng thời gian, tần suất xuất hiện và trạng thái hài lòng tự động (CSAT) của khách hàng.
+        \item Nghiên cứu tìm hiểu và lập trình cài đặt các thuật toán phân tích dữ liệu CRM chuẩn hóa: phân tích phân khúc khách hàng dựa trên tần suất ghé thăm (RFM Analysis) để nhận diện nhóm khách hàng VIP, khách hàng trung thành, và khách hàng có nguy cơ rời bỏ; thuật toán phân tích xu hướng cảm xúc theo thời gian; và thuật toán thống kê mật độ khung giờ cao điểm hỗ trợ ra quyết định kinh doanh.
+    \end{itemize}
 \end{enumerate}
 
-\subsection{Phạm vi nghiên cứu}
+\subsection*{1.3. Đối tượng và phạm vi nghiên cứu}
+\addcontentsline{toc}{subsection}{\numberline{}1.3. Đối tượng và phạm vi nghiên cứu}
+
 \begin{itemize}
-    \item \textbf{Phạm vi công nghệ:} Tập trung cải tiến mã nguồn trích xuất đặc trưng của thư viện DeepFace chạy trên mô hình VGG-Face. Tích hợp giải thuật cắt phân vùng hình học cục bộ không chạy lại bộ dò để đảm bảo tốc độ xử lý nhanh.
-    \item \textbf{Dữ liệu kiểm thử:} Sử dụng các tập ảnh khuôn mặt trước/sau các ca phẫu thuật thẩm mỹ phổ biến (nâng mũi, gọt cằm, cắt mí).
+    \item \textbf{Đối tượng nghiên cứu:}
+    \begin{itemize}
+        \item Vector biểu diễn đặc trưng khuôn mặt (face embeddings) trích xuất từ các mô hình học sâu.
+        \item Dữ liệu hình ảnh khuôn mặt người trước và sau phẫu thuật thẩm mỹ từ bộ dữ liệu chuẩn quốc tế C2FPW.
+        \item Dữ liệu nhật ký hành vi, nhân khẩu học và chỉ số cảm xúc của khách hàng ghé thăm cửa hàng.
+    \end{itemize}
+    \item \textbf{Phạm vi nghiên cứu:}
+    \begin{itemize}
+        \item Tập trung thực nghiệm nhận diện trên bộ dữ liệu phẫu thuật thẩm mỹ C2FPW gồm 90 chủ thể với 3.056 ảnh trước và sau phẫu thuật thẩm mỹ.
+        \item Xây dựng hệ thống CRM thử nghiệm tích hợp nhận diện khuôn mặt bằng mô hình phát hiện và căn chỉnh của thư viện DeepFace cải tiến, lập lịch trình huấn luyện bằng TensorFlow/Keras và cơ sở dữ liệu PostgreSQL.
+    \end{itemize}
 \end{itemize}
 
-\subsection{Bố cục đồ án}
+\subsection*{1.4. Ý nghĩa khoa học và thực tiễn}
+\addcontentsline{toc}{subsection}{\numberline{}1.4. Ý nghĩa khoa học và thực tiễn}
+
 \begin{itemize}
-    \item \textbf{Chương 2: Cơ sở lý thuyết và Tổng quan tài liệu} trình bày về công nghệ nhận diện khuôn mặt, các mô hình CNN trong DeepFace, và các nghiên cứu liên quan đến bài toán nhận diện sau phẫu thuật thẩm mỹ.
-    \item \textbf{Chương 3: Phương pháp nghiên cứu và Thiết kế hệ thống} chi tiết hóa giải thuật đề xuất về cắt phân vùng cục bộ, tính khoảng cách Cosine cục bộ và giải thuật phân bổ trọng số thích ứng động.
-    \item \textbf{Chương 4: Kết quả thực nghiệm và Thảo luận} trình bày về kịch bản kiểm thử, so sánh chỉ số khoảng cách và phân tích tính hiệu quả của mô hình đề xuất trên giao diện ứng dụng.
-    \item \textbf{Chương 5: Kết luận và Hướng phát triển} tổng kết những đóng góp của đồ án và hướng cải tiến trong tương lai.
+    \item \textbf{Ý nghĩa khoa học:} 
+    Đóng góp một phương pháp tiếp cận mới trong việc xử lý biến dạng khuôn mặt do can thiệp cơ học bằng cách kết hợp giữa phân vùng hình học giữ nguyên tỷ lệ (Blur-Masking) và học hệ số ánh xạ không gian metric (Triplet Loss). Nghiên cứu cung cấp cơ sở khoa học cho việc tối ưu hóa các hệ thống nhận diện sinh trắc học đối phó với sự thay đổi diện mạo đột ngột theo thời gian.
+    
+    \item \textbf{Ý nghĩa thực tiễn:} 
+    Mang lại một giải pháp CRM thông minh, thực tế cho các đơn vị kinh doanh dịch vụ chất lượng cao, đặc biệt là các thẩm mỹ viện, spa chăm sóc sắc đẹp và hệ thống bán lẻ cao cấp. Giải pháp giúp tự động hóa quá trình đón tiếp khách hàng VIP, đo lường sự hài lòng tự động qua biểu cảm khuôn mặt và phân tích hành vi khách hàng một cách chính xác mà không làm gián đoạn trải nghiệm của họ.
 \end{itemize}
