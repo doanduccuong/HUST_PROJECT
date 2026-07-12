@@ -1,0 +1,53 @@
+\section*{CHƯƠNG 1. MỞ ĐẦU}
+\addcontentsline{toc}{section}{\numberline{}CHƯƠNG 1. MỞ ĐẦU}
+\setcounter{section}{1}
+\setcounter{subsection}{0}
+\setcounter{figure}{0}
+\setcounter{table}{0}
+\subsection*{1.1. Đặt vấn đề}
+\addcontentsline{toc}{subsection}{\numberline{}1.1. Đặt vấn đề}
+
+Trong kỷ nguyên số hóa và cá nhân hóa trải nghiệm khách hàng, các hệ thống Quản lý Quan hệ Khách hàng (CRM - Customer Relationship Management) đóng vai trò then chốt giúp doanh nghiệp thấu hiểu hành vi và nâng cao năng lực cạnh tranh. Để vận hành hệ thống này một cách tự động và không xâm lấn, việc nhận dạng danh tính kết hợp xác định trạng thái cảm xúc của khách hàng ngay tại điểm chạm thực tế (như quầy tiếp đón, lối vào) trở thành một nhu cầu cấp thiết.
+
+Tuy nhiên, các hệ thống nhận dạng khuôn mặt truyền thống hiện nay đang phải đối mặt với thách thức lớn khi diện mạo khách hàng thay đổi đột ngột do phẫu thuật thẩm mỹ (PTTM) hoặc lão hóa. Các mô hình học sâu nhận diện khuôn mặt phổ biến hiện nay (như FaceNet, VGG-Face, ArcFace) khi áp dụng vào nhóm khách hàng đã qua can thiệp dao kéo thường gặp sai số cục bộ lớn tại các vùng phẫu thuật, làm biến đổi sâu sắc vector đặc trưng toàn cục (Global Embedding). Điều này dẫn đến sự sụt giảm nghiêm trọng về độ chính xác và gây đứt gãy dòng dữ liệu check-in. Nếu không thể nhận diện chính xác danh tính và cảm xúc của khách hàng thân thiết, mọi nỗ lực quản trị quan hệ khách hàng sau đó đều không thể triển khai hiệu quả.
+
+Xuất phát từ thực tế đó, đề tài luận văn tập trung nghiên cứu: \textbf{``Nhận dạng khuôn mặt và xác định cảm xúc khách hàng dưới tác động của phẫu thuật thẩm mỹ tích hợp hệ thống CRM''}. Lộ trình nghiên cứu của đề tài được định hình qua hai bước then chốt liên kết chặt chẽ:
+\begin{enumerate}
+    \item \textbf{Xác định cảm xúc và nhận dạng khách hàng:} Tập trung nghiên cứu phương pháp tiền xử lý làm mờ vùng bảo toàn hình học (Blur-Masking) kết hợp tinh chỉnh lớp chiếu đặc trưng (Feature Projector) bằng hàm mất mát Triplet Loss để nhận dạng khách hàng bền vững trước các thay đổi diện mạo do can thiệp thẩm mỹ. Đồng thời, tích hợp module tự động nhận dạng cảm xúc và ước lượng nhân khẩu học (độ tuổi, giới tính) của khách hàng ngay tại thời điểm check-in.
+    \item \textbf{Xây dựng hệ thống CRM:} Trên cơ sở nguồn dữ liệu định danh và trạng thái cảm xúc được xác định chính xác ở bước trước, tiến hành thiết kế và xây dựng hệ thống CRM. Hệ thống này thực hiện lưu trữ và đồng bộ thông tin khách hàng, nhật ký ghé thăm (check-in logs), độ tuổi, giới tính và cảm xúc để hỗ trợ việc quản lý thông tin và tối ưu hóa quy trình đón tiếp.
+\end{enumerate}
+
+\subsection*{1.2. Mục tiêu nghiên cứu}
+\addcontentsline{toc}{subsection}{\numberline{}1.2. Mục tiêu nghiên cứu}
+
+Để giải quyết triệt để các thách thức đặt ra trong phần đặt vấn đề, nghiên cứu này hướng tới việc thực hiện hai mục tiêu cốt lõi liên kết chặt chẽ. Trước hết, nghiên cứu tập trung vào việc xác định trạng thái cảm xúc và nhận dạng danh tính khách hàng dưới tác động của phẫu thuật thẩm mỹ. Quá trình này bao gồm việc nghiên cứu phương pháp tiền xử lý và trích xuất đặc trưng phân vùng dọc (Thượng, Trung, Hạ) sử dụng kỹ thuật làm mờ vùng bảo toàn hình học (Blur-Masking) nhằm hạn chế ảnh hưởng của can thiệp dao kéo cục bộ; tiếp đó tiến hành huấn luyện tinh chỉnh lớp chiếu đặc trưng (Feature Projector) bằng hàm mất mát Triplet Loss trên bộ dữ liệu thực tế trước và sau phẫu thuật của cùng một chủ thể; và xây dựng cơ chế dung hợp điểm số (Score Fusion) có trọng số sinh học thích ứng kết hợp với module tự động phân tích nhân khẩu học (độ tuổi, giới tính) và nhận diện cảm xúc (Emotion Recognition) ngay tại thời điểm khách hàng check-in.
+
+Mục tiêu tiếp theo của đề tài là xây dựng hệ thống Quản lý Quan hệ Khách hàng (CRM) dựa trên nguồn dữ liệu định danh và cảm xúc đã được xác định chính xác. Hệ thống này thực hiện thiết lập cơ sở dữ liệu đồng bộ để lưu giữ thông tin khách hàng, nhật ký ghé thăm (check-in logs), dòng thời gian và cảm xúc của khách hàng nhằm hỗ trợ công tác quản lý và tối ưu hóa quy trình đón tiếp khách hàng.
+
+\subsection*{1.3. Đối tượng và phạm vi nghiên cứu}
+\addcontentsline{toc}{subsection}{\numberline{}1.3. Đối tượng và phạm vi nghiên cứu}
+
+\begin{itemize}
+    \item \textbf{Đối tượng nghiên cứu:}
+    \begin{itemize}
+        \item Vector biểu diễn đặc trưng khuôn mặt (face embeddings) trích xuất từ các mô hình học sâu.
+        \item Dữ liệu hình ảnh khuôn mặt người trước và sau phẫu thuật thẩm mỹ từ bộ dữ liệu chuẩn quốc tế C2FPW.
+        \item Dữ liệu nhật ký ghé thăm, nhân khẩu học và cảm xúc của khách hàng.
+    \end{itemize}
+    \item \textbf{Phạm vi nghiên cứu:}
+    \begin{itemize}
+        \item Tập trung thực nghiệm nhận diện trên bộ dữ liệu phẫu thuật thẩm mỹ C2FPW gồm 90 chủ thể với 3.056 ảnh trước và sau phẫu thuật thẩm mỹ.
+        \item Xây dựng hệ thống CRM thử nghiệm tích hợp nhận diện khuôn mặt bằng mô hình phát hiện và căn chỉnh của thư viện DeepFace cải tiến, lập lịch trình huấn luyện bằng TensorFlow/Keras và cơ sở dữ liệu PostgreSQL.
+    \end{itemize}
+\end{itemize}
+
+\subsection*{1.4. Ý nghĩa khoa học và thực tiễn}
+\addcontentsline{toc}{subsection}{\numberline{}1.4. Ý nghĩa khoa học và thực tiễn}
+
+\begin{itemize}
+    \item \textbf{Ý nghĩa khoa học:} 
+    Đóng góp một phương pháp tiếp cận mới trong việc xử lý biến dạng khuôn mặt do can thiệp cơ học bằng cách kết hợp giữa phân vùng hình học giữ nguyên tỷ lệ (Blur-Masking) và học hệ số ánh xạ không gian metric (Triplet Loss). Nghiên cứu cung cấp cơ sở khoa học cho việc tối ưu hóa các hệ thống nhận diện sinh trắc học đối phó với sự thay đổi diện mạo đột ngột theo thời gian.
+    
+    \item \textbf{Ý nghĩa thực tiễn:} 
+    Mang lại một giải pháp CRM thực tế cho các đơn vị kinh doanh dịch vụ chất lượng cao, đặc biệt là các thẩm mỹ viện, spa chăm sóc sắc đẹp và hệ thống bán lẻ cao cấp. Giải pháp giúp tự động hóa quá trình đón tiếp khách hàng VIP và nhận biết sự hài lòng tự động qua biểu cảm khuôn mặt một cách chính xác mà không làm gián đoạn trải nghiệm của họ.
+\end{itemize}

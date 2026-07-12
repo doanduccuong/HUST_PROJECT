@@ -1,0 +1,106 @@
+\section*{CHƯƠNG 3. PHƯƠNG PHÁP ĐỀ XUẤT}
+\addcontentsline{toc}{section}{\numberline{}CHƯƠNG 3. PHƯƠNG PHÁP ĐỀ XUẤT}
+\setcounter{section}{3}
+\setcounter{subsection}{0}
+\setcounter{figure}{0}
+\setcounter{table}{0}
+
+\subsection*{3.1. Quy trình tổng quát của phương pháp nghiên cứu đề xuất}
+\addcontentsline{toc}{subsection}{\numberline{}3.1. Quy trình tổng quát của phương pháp nghiên cứu đề xuất}
+
+Để giải quyết bài toán nhận dạng danh tính khách hàng bị biến đổi diện mạo do phẫu thuật thẩm mỹ (PTTM) hoặc lão hóa, nghiên cứu này đề xuất quy trình trích xuất đặc trưng phân vùng thích ứng, kết hợp ánh xạ không gian metric qua lớp chiếu tuyến tính được huấn luyện bằng hàm mất mát Triplet Loss. 
+
+Quy trình nghiên cứu tổng quát được chia làm hai giai đoạn chính:
+\begin{enumerate}
+    \item \textbf{Giai đoạn huấn luyện offline (Offline Training):} 
+    Sử dụng tập dữ liệu ảnh khuôn mặt PTTM để thực hiện phân tách vùng $\rightarrow$ Trích xuất đặc trưng thô từ mô hình nền tảng Facenet512 $\rightarrow$ Huấn luyện lớp chiếu mạng nơ-ron bằng Triplet Loss để tối ưu hóa ma trận trọng số $\bm{W}$ và bias $\bm{b}$ cho từng vùng ảnh độc lập.
+    \item \textbf{Giai đoạn đối sánh online (Online Matching):} 
+    Ảnh đầu vào từ thiết bị được phân vùng và chiếu qua ma trận trọng số đã học để thu được các vector đặc trưng thích ứng $\rightarrow$ Thực hiện thuật toán đối sánh dung hợp trọng số sinh học để đưa ra quyết định nhận dạng danh tính cuối cùng.
+\end{enumerate}
+
+\newpage
+\subsection*{3.2. Phương pháp tiền xử lý và phân tách vùng ảnh khuôn mặt}
+\addcontentsline{toc}{subsection}{\numberline{}3.2. Phương pháp tiền xử lý và phân tách vùng ảnh khuôn mặt}
+
+Để cô lập các biến dạng cơ học do phẫu thuật thẩm mỹ gây ra trên khuôn mặt (đã được tổng quan tại Mục 2.1.4), quy trình thực hiện phân tách khuôn mặt đã căn chỉnh chính diện về kích thước chuẩn $224 \times 224$ pixels thành ba phân vùng sinh học độc lập theo chiều dọc. Các tọa độ phân vùng hình học được em đề xuất và thiết lập như sau:
+\begin{itemize}
+    \item \textbf{Vùng Thượng (Upper Region - Trán và mắt):} Được giới hạn từ 0\% đến 45\% chiều cao của khuôn mặt.
+    \item \textbf{Vùng Trung (Mid Region - Sống mũi và má):} Được giới hạn từ 30\% đến 70\% chiều cao của khuôn mặt.
+    \item \textbf{Vùng Hạ (Lower Region - Miệng và cằm):} Được giới hạn từ 55\% đến 100\% chiều cao của khuôn mặt.
+\end{itemize}
+
+\noindent \textbf{Cơ sở lựa chọn tỷ lệ phân vùng:}
+Các con số tỉ lệ $(0.45; 0.30 - 0.70; 0.55)$ được em tính toán thiết lập dựa trên việc phân tích phân phối tọa độ trung bình của các mốc điểm hình học khuôn mặt (Facial Landmarks) bằng thuật toán MTCNN/RetinaFace trên tập dữ liệu. Khoảng tọa độ mắt thường tập trung ở vị trí 30\% - 45\% chiều cao, mũi tập trung ở 40\% - 70\%, miệng và cằm từ 65\% trở đi. Đặc biệt, em thiết kế **các vùng gối đầu lên nhau (Overlap)** (vùng gối 30\% - 45\% giữa Thượng/Trung và vùng gối 55\% - 70\% giữa Trung/Hạ). Việc tạo vùng gối đầu này là kỹ thuật tự đề xuất bắt buộc, nhằm ngăn chặn các đặc trưng liên kết quan trọng tại khu vực chuyển tiếp (như bọng mắt, sống mũi trên và nếp nhăn khóe cười) bị cắt đôi cơ học, giúp duy trì tính liền mạch thông tin của không gian đặc trưng.
+
+Nhằm triệt tiêu nhiễu biên tần số cao tại các lát cắt (như cơ sở lý thuyết đã phân tích tại Mục 2.1.6), em áp dụng kỹ thuật Mặt nạ làm mờ biên (Blur-Masking) tự lập trình thông qua OpenCV theo các bước cụ thể:
+\begin{enumerate}
+    \item Khởi tạo ảnh nền làm mờ bằng cách áp dụng bộ lọc Gaussian Blur của thư viện OpenCV lên toàn bộ hình ảnh khuôn mặt đầu vào. Kích thước kernel tích chập được em chọn thực nghiệm là $51 \times 51$. Cỡ nhân $51 \times 51$ này được em lựa chọn sau quá trình thực nghiệm vì nếu cỡ nhân quá nhỏ (dưới $15 \times 15$), vùng biên cắt vẫn giữ độ sắc cạnh gây nhiễu CNN; nếu quá lớn (trên $101 \times 101$), vùng làm mờ sẽ lấn át sâu vào khu vực trung tâm làm mất thông tin nhận diện.
+    \item Tạo ba mặt nạ nhị phân (Binary Masks) tương ứng với tọa độ giới hạn hình học của các vùng Thượng, Trung và Hạ.
+    \item Sử dụng các phép toán ma trận NumPy để đè vùng ảnh sắc nét lên ảnh nền đã làm mờ thông qua mặt nạ, tạo ra sự chuyển tiếp mượt mà tại các biên phân cắt.
+\end{enumerate}
+
+\subsection*{3.3. Thiết kế mạng ánh xạ đặc trưng thích ứng (Feature Projector)}
+\addcontentsline{toc}{subsection}{\numberline{}3.3. Thiết kế mạng ánh xạ đặc trưng thích ứng (Feature Projector)}
+
+Lớp chiếu đặc trưng thích ứng (Feature Projector) được em thiết kế dưới dạng một lớp liên kết đầy đủ (Fully Connected Layer) đơn giản đặt ngay sau lớp đầu ra của mô hình nền tảng Facenet512. Lớp này nhận vector đặc trưng 512 chiều của mỗi phân vùng và thực hiện phép biến đổi tuyến tính kết hợp chuẩn hóa L2 (như cơ sở lý thuyết đã trình bày tại Mục 2.1.7) để thu được vector đặc trưng thích ứng mới.
+
+\noindent \textbf{Cơ sở thiết kế kiến trúc lớp chiếu:}
+Lớp chiếu tuyến tính phụ được em thiết kế giữ nguyên số chiều $512 \rightarrow 512$. Việc giữ nguyên số chiều (không giảm chiều) là cần thiết vì mỗi phân vùng sau khi làm mờ đã bị suy giảm đáng kể mật độ thông tin biểu diễn so với ảnh toàn khuôn mặt. Do đó, việc giữ nguyên 512 chiều giúp bảo toàn tối đa dung lượng chứa đặc trưng, tránh hiện tượng mất mát thông tin cục bộ do nén chiều dữ liệu.
+
+Trong pha đối sánh trực tuyến, các trọng số $\bm{W}$ và bias $\bm{b}$ của lớp chiếu được tải tự động từ tệp trọng số đã huấn luyện \texttt{facenet512\_projector\_weights.npz} lưu trữ tại máy chủ. Tầng liên kết đầy đủ được đặt tên là \texttt{projector\_dense} thực hiện tính toán song song cho từng phân vùng.
+
+\subsection*{3.4. Quy trình huấn luyện tối ưu hóa ma trận chiếu bằng Triplet Loss}
+\addcontentsline{toc}{subsection}{\numberline{}3.4. Quy trình huấn luyện tối ưu hóa ma trận chiếu bằng Triplet Loss}
+
+Quy trình huấn luyện tinh chỉnh ma trận chiếu offline được thực hiện trên tập dữ liệu phẫu thuật thẩm mỹ C2FPW. Tập dữ liệu được phân chia thành tập huấn luyện gồm 70 đối tượng (từ S001 đến S070) để thực hiện học khoảng cách đặc trưng (cơ sở lý thuyết tại Mục 2.1.8).
+
+\subsubsection*{3.4.1. Thiết lập bộ ba huấn luyện và chiến lược chọn mẫu (Triplet Selection)}
+Quy trình sinh bộ ba mẫu tự động (online triplet generator) được lập trình để sinh các bộ ba mẫu $(A, P, N)$ từ tập dữ liệu phẫu thuật thẩm mỹ:
+\begin{itemize}
+    \item \textbf{Anchor ($A$):} Chọn ngẫu nhiên từ tập ảnh chụp trước phẫu thuật thẩm mỹ (Before PTTM) của chủ thể $i$.
+    \item \textbf{Positive ($P$):} Chọn ngẫu nhiên từ tập ảnh chụp sau phẫu thuật thẩm mỹ (After PTTM) của cùng chủ thể $i$.
+    \item \textbf{Negative ($N$):} Chọn ngẫu nhiên từ tập ảnh của một chủ thể khác $j$ ($j \neq i$) bất kỳ.
+\end{itemize}
+Chiến lược ghép cặp chéo Trước - Sau PTTM này do em tự thiết kế dựa trên kịch bản thực tế của hệ thống CRM, bắt buộc mô hình phải kéo các vector biến dạng thẩm mỹ về gần với ảnh gốc ban đầu.
+
+\subsubsection*{3.4.2. Cấu hình huấn luyện và tối ưu hóa tham số}
+Quá trình huấn luyện sử dụng bộ tối ưu hóa Adam \cite{kingma2014adam} với các siêu tham số được xác định kết hợp giữa tiêu chuẩn nghiên cứu quốc tế và thực nghiệm tinh chỉnh của em:
+\begin{itemize}
+    \item \textbf{Đóng băng mô hình nền tảng:} Đóng băng toàn bộ trọng số của backbone Facenet512. Thuật toán lan truyền ngược chỉ tập trung tính toán gradient và cập nhật trọng số cho duy nhất lớp chiếu tuyến tính \texttt{projector\_dense} nhằm tránh hiện tượng quá khớp (overfitting).
+    \item \textbf{Tốc độ học (learning rate):} Thiết lập $\eta = 0.0005$. Mức giá trị này được em xác định thông qua thực nghiệm quan sát đường cong hội tụ (Loss curve) trên tập kiểm thử nhằm tránh hiện tượng dao động gradient.
+    \item \textbf{Biên an toàn Triplet Loss:} Thiết lập hằng số margin $\alpha = 0.2$ kế thừa từ nghiên cứu gốc của FaceNet \cite{schroff2015facenet} để ngăn chặn hiện tượng sụp đổ không gian đặc trưng.
+    \item \textbf{Quy mô huấn luyện:} Chạy trong 15 epochs, mỗi epoch thực hiện 20 bước (steps) cập nhật với kích thước lô (batch size) là 32 bộ ba mẫu (Anchor, Positive, Negative) cho mỗi phân vùng. Các thông số quy mô này được em tinh chỉnh dựa trên điểm dừng hội tụ thực tế của hàm mất mát.
+\end{itemize}
+Sau khi hoàn tất huấn luyện, ma trận trọng số $\bm{W}$ và bias $\bm{b}$ được xuất ra file lưu trữ để phục vụ pha đối sánh trực tuyến.
+
+\subsection*{3.5. Thuật toán đối sánh dung hợp trọng số sinh học (Weighted Bio-fusion)}
+\addcontentsline{toc}{subsection}{\numberline{}3.5. Thuật toán đối sánh dung hợp trọng số sinh học (Weighted Bio-fusion)}
+
+Trong pha đối sánh thực tế, thay vì so khớp một khoảng cách toàn khuôn mặt duy nhất, hệ thống thực hiện trích xuất vector đặc trưng thích ứng cho từng phân vùng và tiến hành dung hợp khoảng cách (như cơ sở lý thuyết đã trình bày tại Mục 2.1.5).
+
+Các hệ số trọng số sinh học tối ưu và ngưỡng quyết định được thiết lập cố định như sau:
+\begin{itemize}
+    \item \textbf{Trọng số vùng Thượng ($w_{\text{upper}}$):} Thiết lập bằng $0.5$ (vùng mắt và trán có tính bền vững sinh học cao nhất).
+    \item \textbf{Trọng số vùng Trung ($w_{\text{mid}}$):} Thiết lập bằng $0.3$ (vùng mũi chịu tác động trung bình).
+    \item \textbf{Trọng số vùng Hạ ($w_{\text{lower}}$):} Thiết lập bằng $0.2$ (vùng hàm và cằm chịu tác động phẫu thuật nặng nhất).
+    \item \textbf{Ngưỡng quyết định nhận dạng ($\theta$):} Thiết lập bằng $0.30$.
+\end{itemize}
+
+\noindent \textbf{Cơ sở xác định các giá trị thực nghiệm:}
+\begin{itemize}
+    \item \textbf{Bộ trọng số $(0.5; 0.3; 0.2)$:} Được tối ưu hóa bằng thuật toán tìm kiếm lưới (Grid Search) chạy thực tế trên tập dữ liệu C2FPW (như đã phân tích và chứng minh thực nghiệm tại Mục 2.1.5).
+    \item \textbf{Ngưỡng đối sánh $\theta = 0.30$:} Được em xác định thông qua thực nghiệm vẽ đường cong ROC (Receiver Operating Characteristic) trên tập kiểm thử, tìm điểm tối ưu mà tại đó tổng tỷ lệ từ chối sai (FRR) và chấp nhận sai (FAR) đạt mức tối thiểu toàn cục (Equal Error Rate - EER).
+\end{itemize}
+
+Thuật toán đối sánh dung hợp này được em lập trình tích hợp trực tiếp dưới tầng cơ sở dữ liệu PostgreSQL sử dụng extension \texttt{pgvector} để tính toán khoảng cách Cosine song song giữa các phân vùng tương ứng, giúp giảm thiểu độ trễ truy vấn hệ thống check-in thời gian thực.
+
+\subsection*{3.6. Mô hình hệ thống thử nghiệm phục vụ thực nghiệm (Demo System)}
+\addcontentsline{toc}{subsection}{\numberline{}3.6. Mô hình hệ thống thử nghiệm phục vụ thực nghiệm (Demo System)}
+
+Để thực nghiệm và chứng minh tính ứng dụng của phương pháp nghiên cứu đề xuất, một mô hình ứng dụng thử nghiệm (Demo) được xây dựng dưới cấu trúc kiến trúc 3 lớp:
+\begin{itemize}
+    \item \textbf{Giao diện Demo (Next.js):} Mô phỏng các chức năng đăng ký chân dung thành viên và quét camera nhận diện.
+    \item \textbf{Dịch vụ xử lý (FastAPI):} Đóng gói mô hình đề xuất và thực hiện tính toán đặc trưng.
+    \item \textbf{Hệ lưu trữ đặc trưng (PostgreSQL + pgvector):} Lưu trữ thông tin định danh mẫu và hỗ trợ tính toán khoảng cách đối sánh dung hợp trực tiếp ở mức CSDL bằng ngôn ngữ truy vấn SQL.
+\end{itemize}
+
