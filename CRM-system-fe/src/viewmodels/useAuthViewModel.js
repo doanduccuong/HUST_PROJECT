@@ -14,9 +14,27 @@ export function useAuthViewModel() {
     const savedToken = localStorage.getItem("crm_token");
     const savedUserObj = localStorage.getItem("crm_user");
     if (savedToken && savedUserObj) {
-      setToken(savedToken);
-      setUser(JSON.parse(savedUserObj));
-      setIsAuthenticated(true);
+      try {
+        const decoded = JSON.parse(atob(savedToken.split('.')[1]));
+        if (decoded.exp * 1000 < Date.now()) {
+          // Token expired, clear session
+          localStorage.removeItem("crm_token");
+          localStorage.removeItem("crm_user");
+          setToken(null);
+          setUser(null);
+          setIsAuthenticated(false);
+        } else {
+          setToken(savedToken);
+          setUser(JSON.parse(savedUserObj));
+          setIsAuthenticated(true);
+        }
+      } catch (e) {
+        localStorage.removeItem("crm_token");
+        localStorage.removeItem("crm_user");
+        setToken(null);
+        setUser(null);
+        setIsAuthenticated(false);
+      }
     }
   }, []);
 

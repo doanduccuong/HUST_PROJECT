@@ -8,6 +8,7 @@ import OrderManagementView from "../components/OrderManagementView";
 import CdrsView from "../components/CdrsView";
 import MembersList from "../components/MembersList";
 import LoginView from "../components/LoginView";
+import ProductManagementView from "../components/ProductManagementView";
 
 import { useCrmViewModel } from "../viewmodels/useCrmViewModel";
 import { useCustomerViewModel } from "../viewmodels/useCustomerViewModel";
@@ -34,6 +35,13 @@ export default function Home() {
             orders={crmVm.orders}
             searchTerm={crmVm.searchTerm}
             onSearch={crmVm.handleSearch}
+          />
+        );
+      case "products":
+        return (
+          <ProductManagementView
+            products={crmVm.products}
+            onUpdateProduct={crmVm.updateProduct}
           />
         );
       case "cdrs":
@@ -88,6 +96,7 @@ export default function Home() {
           onStatusChange={crmVm.handleStatusChange}
           userName={authVm.user?.fullname || "User"}
           userRole={authVm.user?.role || "Agent"}
+          onLogout={authVm.logout}
         />
 
         {/* Dynamic Page Content */}

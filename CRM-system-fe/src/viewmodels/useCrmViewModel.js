@@ -34,7 +34,19 @@ export function useCrmViewModel(token) {
     totalOrders: 0,
     totalRevenue: 0,
     conversionRate: 0.0,
-    callsHandledToday: 0
+    callsHandledToday: 0,
+    lead: { approved: 0, rejected: 0, callback: 0, trash: 0, unCall: 0 },
+    mySale: { lead: 0, saleOrder: 0, delivered: 0, paid: 0 },
+    totalCall: { connected: 0, busy: 0, invalid: 0, total: 0 },
+    compare: {
+      lst: [
+        { label: "Total Lead", value: 0.0 },
+        { label: "Total Order Value", value: 0.0 },
+        { label: "Sale Order", value: 0.0 },
+        { label: "Approve Rate", value: 0.0 },
+        { label: "Avg Order Value", value: 0.0 }
+      ]
+    }
   });
 
   // Orders State
@@ -42,6 +54,9 @@ export function useCrmViewModel(token) {
 
   // CDRs State
   const [cdrs, setCdrs] = useState([]);
+
+  // Products State
+  const [products, setProducts] = useState([]);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -86,6 +101,23 @@ export function useCrmViewModel(token) {
         status: cdr.status
       }));
       setCdrs(mappedCdrs);
+
+      // 4. Fetch Products
+      try {
+        const productsRes = await Client.get("/api/v1/products");
+        const mappedProducts = productsRes.data.map((prod) => ({
+          id: prod.prodId,
+          code: prod.code || "",
+          category: prod.category || "",
+          name: prod.name,
+          commercialName: prod.dscr || prod.name,
+          price: prod.price ? prod.price.split(",") : ["0"],
+          status: prod.status === 1 ? "Active" : "Inactive"
+        }));
+        setProducts(mappedProducts);
+      } catch (prodErr) {
+        console.error("Failed to load products:", prodErr);
+      }
 
     } catch (err) {
       console.error("Failed to load database CRM data via Axios:", err);
@@ -139,6 +171,25 @@ export function useCrmViewModel(token) {
     );
   });
 
+  const updateProduct = async (id, productData) => {
+    try {
+      const body = {
+        name: productData.name,
+        code: productData.code,
+        category: productData.category,
+        price: Array.isArray(productData.price) ? productData.price.join(",") : productData.price,
+        dscr: productData.commercialName,
+        status: productData.status === "Active" ? 1 : 0
+      };
+      await Client.put(`/api/v1/products/${id}`, body);
+      fetchCrmData();
+      return { success: true };
+    } catch (err) {
+      console.error("Failed to update product:", err);
+      return { success: false, error: err.message };
+    }
+  };
+
   return {
     activeTab,
     setActiveTab,
@@ -147,6 +198,8 @@ export function useCrmViewModel(token) {
     dashboardStats,
     orders: filteredOrders,
     cdrs,
+    products,
+    updateProduct,
     searchTerm,
     handleSearch,
     currentPage,

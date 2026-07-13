@@ -21,3 +21,18 @@ ApiClient.interceptors.request.use(
     return Promise.reject(error);
   }
 );
+
+// Response Interceptor để tự động xử lý khi Token hết hạn (401/403)
+ApiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("crm_token");
+        localStorage.removeItem("crm_user");
+        window.location.reload();
+      }
+    }
+    return Promise.reject(error);
+  }
+);

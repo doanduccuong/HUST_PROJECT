@@ -6,6 +6,7 @@ export default function Sidebar({ activeTab, onTabChange }) {
   const [openMenus, setOpenMenus] = useState({
     customers: true,
     orders: true,
+    product: true,
   });
 
   const toggleMenu = (menu) => {
@@ -176,6 +177,57 @@ export default function Sidebar({ activeTab, onTabChange }) {
                 }`}
               >
                 Validation
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Product Menu Group */}
+        <div className="pt-2">
+          <button
+            onClick={() => toggleMenu("product")}
+            className="w-full flex items-center justify-between px-3 py-2 text-slate-400 hover:text-slate-200 text-sm font-medium hover:bg-slate-800 rounded-lg"
+          >
+            <div className="flex items-center gap-3">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+              </svg>
+              <span>Product</span>
+            </div>
+            <svg
+              className={`w-4 h-4 transition-transform duration-200 ${
+                openMenus.product ? "rotate-180" : ""
+              }`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </button>
+
+          {openMenus.product && (
+            <div className="pl-8 pr-2 mt-1 space-y-1">
+              <button
+                onClick={() => onTabChange("products")}
+                className={`w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                  activeTab === "products"
+                    ? "text-blue-500 font-semibold"
+                    : "text-slate-500 hover:text-slate-300"
+                }`}
+              >
+                Product Management
+              </button>
+              <button
+                onClick={() => onTabChange("promotions")}
+                className={`w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                  activeTab === "promotions"
+                    ? "text-blue-500 font-semibold"
+                    : "text-slate-500 hover:text-slate-300"
+                }`}
+              >
+                Promotion Management
               </button>
             </div>
           )}

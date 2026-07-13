@@ -2,8 +2,9 @@
 
 import React, { useState } from "react";
 
-export default function Header({ agentStatus, onStatusChange, userName = "Dino Nguyen", userRole = "Manager" }) {
+export default function Header({ agentStatus, onStatusChange, userName = "Dino Nguyen", userRole = "Manager", onLogout }) {
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
 
   const statuses = [
     { id: "available", label: "Available", color: "bg-emerald-500", text: "text-emerald-600" },
@@ -72,14 +73,46 @@ export default function Header({ agentStatus, onStatusChange, userName = "Dino N
         </div>
 
         {/* User Profile */}
-        <div className="flex items-center gap-3">
-          <div className="text-right">
-            <div className="text-xs font-bold text-slate-800">{userName}</div>
-            <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{userRole}</div>
-          </div>
-          <div className="w-9 h-9 rounded-full bg-slate-200 border border-slate-300 flex items-center justify-center text-slate-600 font-bold text-sm shadow-sm overflow-hidden">
-            {userName ? userName.split(" ").map(n => n[0]).join("") : "U"}
-          </div>
+        <div className="relative">
+          <button
+            onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+            className="flex items-center gap-3 hover:bg-slate-50 p-1.5 rounded-lg transition-colors focus:outline-none"
+          >
+            <div className="text-right">
+              <div className="text-xs font-bold text-slate-800">{userName}</div>
+              <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{userRole}</div>
+            </div>
+            <div className="w-9 h-9 rounded-full bg-slate-200 border border-slate-300 flex items-center justify-center text-slate-600 font-bold text-sm shadow-sm overflow-hidden">
+              {userName ? userName.split(" ").map(n => n[0]).join("") : "U"}
+            </div>
+          </button>
+
+          {showProfileDropdown && (
+            <>
+              {/* Overlay */}
+              <div className="fixed inset-0 z-10" onClick={() => setShowProfileDropdown(false)}></div>
+              
+              <div className="absolute right-0 mt-1.5 w-48 rounded-xl bg-white border border-slate-200 shadow-lg z-20 overflow-hidden py-1">
+                <div className="px-4 py-2 border-b border-slate-100">
+                  <p className="text-[10px] text-slate-400">Logged in as</p>
+                  <p className="text-xs font-bold text-slate-800 truncate">{userName}</p>
+                </div>
+                
+                <button
+                  onClick={() => {
+                    setShowProfileDropdown(false);
+                    if (onLogout) onLogout();
+                  }}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-xs font-bold text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                  </svg>
+                  <span>Logout</span>
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </header>

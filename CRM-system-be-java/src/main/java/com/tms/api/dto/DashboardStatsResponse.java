@@ -1,5 +1,9 @@
 package com.tms.api.dto;
 
+import com.tms.api.dto.dashboard.MySaleTunnelDto;
+import com.tms.api.dto.dashboard.StaticLeadDto;
+import com.tms.api.dto.dashboard.TotalCallDto;
+import com.tms.api.dto.dashboard.PerfomanceCompareDto;
 import lombok.Builder;
 import lombok.Data;
 
@@ -16,4 +20,11 @@ public class DashboardStatsResponse {
     private String postgresStatus;
     private String pgvectorStatus;
     private String pythonStatus;
+
+    // Redesigned dashboard metrics
+    private MySaleTunnelDto mySale;
+    private StaticLeadDto lead;
+    private TotalCallDto totalCall;
+    private PerfomanceCompareDto compare;
 }
+
