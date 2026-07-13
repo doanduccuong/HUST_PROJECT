@@ -78,3 +78,10 @@ test_images/C2FPW/
 test_images/SurFace1259/
 test_images/IIIT-D/
 test_images/3D-Face-Morph/
+
+# Java and Workspace Build / IDE files
+**/bin/
+.gradle/
+**/build/
+*.code-workspace
+
