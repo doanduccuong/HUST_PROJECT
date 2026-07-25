@@ -1,0 +1,5 @@
+__pycache__
+*.pyc
+temp
+debug_upload.jpg
+.pytest_cache

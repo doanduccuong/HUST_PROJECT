@@ -61,7 +61,6 @@ async def checkin(file: UploadFile = File(...)):
     finally:
         if os.path.exists(temp_file_path):
             try:
-                shutil.copy(temp_file_path, "debug_upload.jpg")
                 os.remove(temp_file_path)
             except Exception:
                 pass

@@ -10,8 +10,11 @@ import com.tms.repository.CdrRepository;
 import com.tms.repository.CustomerRepository;
 import com.tms.repository.SaleOrderRepository;
 import com.tms.api.service.FaceRecognitionService;
+import com.tms.api.dto.dashboard.SalesPerformanceResponse;
+import com.tms.api.service.SalesPerformanceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -28,12 +31,19 @@ public class DashboardController {
     private final SaleOrderRepository saleOrderRepository;
     private final CdrRepository cdrRepository;
     private final FaceRecognitionService faceRecognitionService;
+    private final SalesPerformanceService salesPerformanceService;
+
+    @GetMapping("/sales-performance")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    public ResponseEntity<SalesPerformanceResponse> getSalesPerformance() {
+        return ResponseEntity.ok(salesPerformanceService.getPerformance());
+    }
 
     @GetMapping("/stats")
     public ResponseEntity<DashboardStatsResponse> getStats() {
         long totalMembers = customerRepository.count();
         long totalOrders = saleOrderRepository.count();
-        double totalRevenue = saleOrderRepository.sumTotalRevenue();
+        double totalRevenue = saleOrderRepository.sumPaidRevenue();
         long totalCalls = cdrRepository.count();
         
         double conversionRate = totalMembers > 0 
@@ -76,9 +86,8 @@ public class DashboardController {
         // Funnel metrics
         int funnelLead = (int) totalMembers;
         int funnelSaleOrder = (int) totalOrders;
-        // Approximate delivery and paid status counts based on orders if database doesn't track separately
-        int funnelDelivery = (int) (totalOrders * 0.8);
-        int funnelPaid = (int) (totalOrders * 0.5);
+        int funnelDelivery = (int) saleOrderRepository.countByStatusIgnoreCase("DELIVERED");
+        int funnelPaid = (int) saleOrderRepository.countByStatusIgnoreCase("PAID");
 
 
         // 3. Build sub-DTOs
@@ -149,4 +158,3 @@ public class DashboardController {
                 .build());
     }
 }
-

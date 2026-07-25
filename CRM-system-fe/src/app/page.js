@@ -9,15 +9,26 @@ import CdrsView from "../components/CdrsView";
 import MembersList from "../components/MembersList";
 import LoginView from "../components/LoginView";
 import ProductManagementView from "../components/ProductManagementView";
+import FaceSearchView from "../components/FaceSearchView";
+import SalesPerformanceView from "../components/SalesPerformanceView";
+import OfferCatalogView from "../components/OfferCatalogView";
 
 import { useCrmViewModel } from "../viewmodels/useCrmViewModel";
 import { useCustomerViewModel } from "../viewmodels/useCustomerViewModel";
 import { useAuthViewModel } from "../viewmodels/useAuthViewModel";
+import { useFaceSearchViewModel } from "../viewmodels/useFaceSearchViewModel";
+import { useSalesPerformanceViewModel } from "../viewmodels/useSalesPerformanceViewModel";
+import { useOfferCatalogViewModel } from "../viewmodels/useOfferCatalogViewModel";
 
 export default function Home() {
   const authVm = useAuthViewModel();
   const crmVm = useCrmViewModel(authVm.token);
   const customerVm = useCustomerViewModel();
+  const faceSearchVm = useFaceSearchViewModel();
+  const salesPerformanceVm = useSalesPerformanceViewModel(
+    crmVm.activeTab === "salesPerformance",
+  );
+  const offerCatalogVm = useOfferCatalogViewModel(crmVm.activeTab === "offers");
 
   const renderContent = () => {
     switch (crmVm.activeTab) {
@@ -57,6 +68,12 @@ export default function Home() {
             />
           </div>
         );
+      case "faceSearch":
+        return <FaceSearchView vm={faceSearchVm} />;
+      case "salesPerformance":
+        return <SalesPerformanceView vm={salesPerformanceVm} />;
+      case "offers":
+        return <OfferCatalogView vm={offerCatalogVm} />;
       case "bulkDistribution":
       case "validation":
       default:
@@ -86,7 +103,11 @@ export default function Home() {
   return (
     <div className="flex h-screen bg-slate-100 overflow-hidden font-sans">
       {/* Left Sidebar */}
-      <Sidebar activeTab={crmVm.activeTab} onTabChange={crmVm.setActiveTab} />
+      <Sidebar
+        activeTab={crmVm.activeTab}
+        onTabChange={crmVm.setActiveTab}
+        userRole={authVm.user?.role}
+      />
 
       {/* Right Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">

@@ -168,6 +168,7 @@ class CheckinService:
                 identified = True
                 
             return {
+                "customer_id": customer_id,
                 "identified": identified,
                 "name": customer_name,
                 "distance": distance,

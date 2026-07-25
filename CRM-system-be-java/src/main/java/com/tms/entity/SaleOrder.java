@@ -51,6 +51,30 @@ public class SaleOrder {
     @Column(name = "assigned")
     private String assigned;
 
+    @Column(name = "customer_id")
+    private Integer customerId;
+
+    @Column(name = "staff_id")
+    private Integer staffId;
+
+    @Column(name = "product_id")
+    private Integer productId;
+
+    @Column(name = "quantity")
+    private Integer quantity;
+
+    @Column(name = "currency")
+    private String currency;
+
+    @Column(name = "status")
+    private String status;
+
+    @Column(name = "paid_at")
+    private ZonedDateTime paidAt;
+
+    @Column(name = "updated_at", insertable = false, updatable = false)
+    private ZonedDateTime updatedAt;
+
     @Column(name = "created_at", insertable = false, updatable = false)
     private ZonedDateTime createdAt;
 }

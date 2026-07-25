@@ -32,4 +32,29 @@ export class CustomerApi {
     const response = await ApiClient.get("/api/v1/customers");
     return response.data;
   }
+
+  async identify(file) {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("source", "IMPORT");
+    const response = await ApiClient.post("/api/v1/customers/identify", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return response.data;
+  }
+
+  async confirmIdentity(searchId, customerId) {
+    const response = await ApiClient.post(
+      `/api/v1/customers/identify/${searchId}/confirm`,
+      { customerId },
+    );
+    return response.data;
+  }
+
+  async getProfile360(customerId) {
+    const response = await ApiClient.get(
+      `/api/v1/customers/${customerId}/profile-360`,
+    );
+    return response.data;
+  }
 }

@@ -10,4 +10,16 @@ export class CustomerRepository {
   async getCustomers() {
     throw new Error("Phương thức getCustomers chưa được triển khai");
   }
+
+  async identify() {
+    throw new Error("Phương thức identify chưa được triển khai");
+  }
+
+  async confirmIdentity() {
+    throw new Error("Phương thức confirmIdentity chưa được triển khai");
+  }
+
+  async getProfile360() {
+    throw new Error("Phương thức getProfile360 chưa được triển khai");
+  }
 }

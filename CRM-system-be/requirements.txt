@@ -1,0 +1,9 @@
+fastapi>=0.110,<1
+uvicorn[standard]>=0.29,<1
+python-multipart>=0.0.9,<1
+numpy>=1.26,<3
+opencv-python>=4.9,<5
+deepface>=0.0.93,<1
+tf-keras>=2.21,<2.22
+psycopg2-binary>=2.9,<3
+requests>=2.31,<3

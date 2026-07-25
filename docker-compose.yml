@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -12,7 +10,62 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  face-service:
+    build:
+      context: ./CRM-system-be
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: postgres
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  crm-api:
+    build:
+      context: ./CRM-system-be-java
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/postgres
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+      PYTHON_FACE_SERVICE_URL: http://face-service:8000
+      JWT_SECRET: ${JWT_SECRET:-9a7f47e3a9b1c7c8a6f4d5b6e7f8c9d0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6}
+      DEMO_DATA_ENABLED: ${DEMO_DATA_ENABLED:-true}
+      DEMO_MANAGER_PASSWORD: ${DEMO_MANAGER_PASSWORD:-demo123}
+      OFFERS_IMPORT_ENABLED: ${OFFERS_IMPORT_ENABLED:-true}
+      OFFERS_XLSX_PATH: /data/products.xlsx
+    volumes:
+      - ./products.xlsx:/data/products.xlsx:ro
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      face-service:
+        condition: service_started
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./CRM-system-fe
+    ports:
+      - "3000:3000"
+    depends_on:
+      crm-api:
+        condition: service_started
+    restart: unless-stopped
 
 volumes:
   postgres_data:

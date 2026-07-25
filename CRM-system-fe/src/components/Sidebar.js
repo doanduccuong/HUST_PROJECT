@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 
-export default function Sidebar({ activeTab, onTabChange }) {
+export default function Sidebar({ activeTab, onTabChange, userRole }) {
+  const canManage = ["MANAGER", "ADMIN"].includes((userRole || "").toUpperCase());
   const [openMenus, setOpenMenus] = useState({
     customers: true,
     orders: true,
@@ -60,6 +61,22 @@ export default function Sidebar({ activeTab, onTabChange }) {
           </button>
         ))}
 
+        {canManage && (
+          <button
+            onClick={() => onTabChange("salesPerformance")}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === "salesPerformance"
+                ? "bg-blue-600 text-white"
+                : "hover:bg-slate-800 text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3v18h18M7 16l4-4 3 3 5-7" />
+            </svg>
+            <span>Sale Performance</span>
+          </button>
+        )}
+
         {/* Customers Menu Group */}
         <div className="pt-2">
           <button
@@ -97,6 +114,18 @@ export default function Sidebar({ activeTab, onTabChange }) {
               >
                 Customer List
               </button>
+              {canManage && (
+                <button
+                  onClick={() => onTabChange("faceSearch")}
+                  className={`w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                    activeTab === "faceSearch"
+                      ? "text-blue-500 font-semibold"
+                      : "text-slate-500 hover:text-slate-300"
+                  }`}
+                >
+                  Face Search & 360
+                </button>
+              )}
               <button
                 onClick={() => onTabChange("cdrs")}
                 className={`w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors ${
@@ -228,6 +257,16 @@ export default function Sidebar({ activeTab, onTabChange }) {
                 }`}
               >
                 Promotion Management
+              </button>
+              <button
+                onClick={() => onTabChange("offers")}
+                className={`w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                  activeTab === "offers"
+                    ? "text-blue-500 font-semibold"
+                    : "text-slate-500 hover:text-slate-300"
+                }`}
+              >
+                Offer Catalog (XLSX)
               </button>
             </div>
           )}

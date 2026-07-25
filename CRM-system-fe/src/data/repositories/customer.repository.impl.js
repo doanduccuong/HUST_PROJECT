@@ -1,5 +1,10 @@
 import { CustomerRepository } from "../../domain/repositories/customer.repository";
-import { CheckinResponseSchema, RegisterResponseSchema } from "../dto/customer.dto";
+import {
+  CheckinResponseSchema,
+  Customer360ResponseSchema,
+  FaceSearchResponseSchema,
+  RegisterResponseSchema,
+} from "../dto/customer.dto";
 import { CustomerMapper } from "../mappers/customer.mapper";
 
 export class CustomerRepositoryImpl extends CustomerRepository {
@@ -29,5 +34,19 @@ export class CustomerRepositoryImpl extends CustomerRepository {
 
   async getCustomers() {
     return await this.customerApi.getCustomers();
+  }
+
+  async identify(file) {
+    return FaceSearchResponseSchema.parse(await this.customerApi.identify(file));
+  }
+
+  async confirmIdentity(searchId, customerId) {
+    return await this.customerApi.confirmIdentity(searchId, customerId);
+  }
+
+  async getProfile360(customerId) {
+    return Customer360ResponseSchema.parse(
+      await this.customerApi.getProfile360(customerId),
+    );
   }
 }

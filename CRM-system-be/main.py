@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routes import register, checkin, dashboard, customers
+from api.routes import face_analysis
 
 app = FastAPI(title="Face Recognition API")
 
@@ -18,3 +19,4 @@ app.include_router(register.router)
 app.include_router(checkin.router)
 app.include_router(dashboard.router)
 app.include_router(customers.router)
+app.include_router(face_analysis.router)

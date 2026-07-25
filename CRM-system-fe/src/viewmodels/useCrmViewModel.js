@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { ApiClient as Client } from "../data/datasources/apiClient";
 
 export function useCrmViewModel(token) {
@@ -8,13 +8,14 @@ export function useCrmViewModel(token) {
 
   // Đồng bộ tab từ URL parameter khi mount
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    const timer = window.setTimeout(() => {
       const params = new URLSearchParams(window.location.search);
       const tab = params.get("tab");
       if (tab) {
         setActiveTabState(tab);
       }
-    }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const setActiveTab = (tab) => {
@@ -63,7 +64,7 @@ export function useCrmViewModel(token) {
   const itemsPerPage = 10;
 
   // Fetch all CRM data dynamically from Spring Boot APIs
-  const fetchCrmData = async () => {
+  const fetchCrmData = useCallback(async () => {
     if (!token) return;
 
     try {
@@ -122,12 +123,15 @@ export function useCrmViewModel(token) {
     } catch (err) {
       console.error("Failed to load database CRM data via Axios:", err);
     }
-  };
+  }, [token]);
 
   // Trigger data load on token authentication
   useEffect(() => {
-    fetchCrmData();
-  }, [token, activeTab]); // Refresh when tab switches or token changes
+    const timer = window.setTimeout(() => {
+      void fetchCrmData();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [fetchCrmData, activeTab]); // Refresh when tab switches or token changes
 
   const handleStatusChange = async (status) => {
     setAgentStatus(status);

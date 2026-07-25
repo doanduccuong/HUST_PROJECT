@@ -10,32 +10,33 @@ export function useAuthViewModel() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Check local storage for existing session
-    const savedToken = localStorage.getItem("crm_token");
-    const savedUserObj = localStorage.getItem("crm_user");
-    if (savedToken && savedUserObj) {
-      try {
-        const decoded = JSON.parse(atob(savedToken.split('.')[1]));
-        if (decoded.exp * 1000 < Date.now()) {
-          // Token expired, clear session
+    const timer = window.setTimeout(() => {
+      const savedToken = localStorage.getItem("crm_token");
+      const savedUserObj = localStorage.getItem("crm_user");
+      if (savedToken && savedUserObj) {
+        try {
+          const decoded = JSON.parse(atob(savedToken.split('.')[1]));
+          if (decoded.exp * 1000 < Date.now()) {
+            localStorage.removeItem("crm_token");
+            localStorage.removeItem("crm_user");
+            setToken(null);
+            setUser(null);
+            setIsAuthenticated(false);
+          } else {
+            setToken(savedToken);
+            setUser(JSON.parse(savedUserObj));
+            setIsAuthenticated(true);
+          }
+        } catch {
           localStorage.removeItem("crm_token");
           localStorage.removeItem("crm_user");
           setToken(null);
           setUser(null);
           setIsAuthenticated(false);
-        } else {
-          setToken(savedToken);
-          setUser(JSON.parse(savedUserObj));
-          setIsAuthenticated(true);
         }
-      } catch (e) {
-        localStorage.removeItem("crm_token");
-        localStorage.removeItem("crm_user");
-        setToken(null);
-        setUser(null);
-        setIsAuthenticated(false);
       }
-    }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const login = async (username, password) => {
