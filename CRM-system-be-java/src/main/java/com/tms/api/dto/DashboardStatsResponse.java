@@ -26,5 +26,8 @@ public class DashboardStatsResponse {
     private StaticLeadDto lead;
     private TotalCallDto totalCall;
     private PerfomanceCompareDto compare;
+
+    // Real-time Retail Emotion Analytics
+    private java.util.Map<String, Object> retailAnalytics;
 }
 

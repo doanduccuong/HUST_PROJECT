@@ -2,6 +2,7 @@ FROM eclipse-temurin:17-jdk AS build
 WORKDIR /workspace
 COPY gradle gradle
 COPY gradlew build.gradle settings.gradle ./
+RUN sed -i 's/\r$//' gradlew
 RUN ./gradlew dependencies --no-daemon
 COPY src src
 RUN ./gradlew bootJar --no-daemon

@@ -34,9 +34,9 @@ export default function Sidebar({ activeTab, onTabChange, userRole }) {
       {/* Brand Logo */}
       <div className="p-5 flex items-center gap-3 border-b border-slate-800">
         <div className="w-8 h-8 rounded bg-blue-600 flex items-center justify-center text-white font-extrabold text-sm tracking-wider">
-          TMS
+          RE
         </div>
-        <span className="font-bold text-white text-lg tracking-tight">TMS CRM</span>
+        <span className="font-bold text-white text-lg tracking-tight">Retail Emotion CRM</span>
       </div>
 
       {/* Navigation List */}
@@ -126,151 +126,22 @@ export default function Sidebar({ activeTab, onTabChange, userRole }) {
                   Face Search & 360
                 </button>
               )}
-              <button
-                onClick={() => onTabChange("cdrs")}
-                className={`w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors ${
-                  activeTab === "cdrs"
-                    ? "text-blue-500 font-semibold"
-                    : "text-slate-500 hover:text-slate-300"
+              {canManage && (
+                <button
+                  onClick={() => onTabChange("experienceLogs")}
+                  className={`w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                    activeTab === "experienceLogs"
+                      ? "text-blue-500 font-semibold"
+                      : "text-slate-500 hover:text-slate-300"
                 }`}
               >
-                CDRs
+                Nhật ký & Đối soát
               </button>
+              )}
             </div>
           )}
         </div>
 
-        {/* Orders Menu Group */}
-        <div className="pt-2">
-          <button
-            onClick={() => toggleMenu("orders")}
-            className="w-full flex items-center justify-between px-3 py-2 text-slate-400 hover:text-slate-200 text-sm font-medium hover:bg-slate-800 rounded-lg"
-          >
-            <div className="flex items-center gap-3">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
-              </svg>
-              <span>Orders</span>
-            </div>
-            <svg
-              className={`w-4 h-4 transition-transform duration-200 ${
-                openMenus.orders ? "rotate-180" : ""
-              }`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-            </svg>
-          </button>
-
-          {openMenus.orders && (
-            <div className="pl-8 pr-2 mt-1 space-y-1">
-              <button
-                onClick={() => onTabChange("orderList")}
-                className={`w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors ${
-                  activeTab === "orderList"
-                    ? "text-blue-500 font-semibold"
-                    : "text-slate-500 hover:text-slate-300"
-                }`}
-              >
-                Order List
-              </button>
-              <button
-                onClick={() => onTabChange("orders")}
-                className={`w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors ${
-                  activeTab === "orders"
-                    ? "text-blue-500 font-semibold"
-                    : "text-slate-500 hover:text-slate-300"
-                }`}
-              >
-                Order Management
-              </button>
-              <button
-                onClick={() => onTabChange("bulkDistribution")}
-                className={`w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors ${
-                  activeTab === "bulkDistribution"
-                    ? "text-blue-500 font-semibold"
-                    : "text-slate-500 hover:text-slate-300"
-                }`}
-              >
-                Bulk Distribution
-              </button>
-              <button
-                onClick={() => onTabChange("validation")}
-                className={`w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors ${
-                  activeTab === "validation"
-                    ? "text-blue-500 font-semibold"
-                    : "text-slate-500 hover:text-slate-300"
-                }`}
-              >
-                Validation
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Product Menu Group */}
-        <div className="pt-2">
-          <button
-            onClick={() => toggleMenu("product")}
-            className="w-full flex items-center justify-between px-3 py-2 text-slate-400 hover:text-slate-200 text-sm font-medium hover:bg-slate-800 rounded-lg"
-          >
-            <div className="flex items-center gap-3">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
-              </svg>
-              <span>Product</span>
-            </div>
-            <svg
-              className={`w-4 h-4 transition-transform duration-200 ${
-                openMenus.product ? "rotate-180" : ""
-              }`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-            </svg>
-          </button>
-
-          {openMenus.product && (
-            <div className="pl-8 pr-2 mt-1 space-y-1">
-              <button
-                onClick={() => onTabChange("products")}
-                className={`w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors ${
-                  activeTab === "products"
-                    ? "text-blue-500 font-semibold"
-                    : "text-slate-500 hover:text-slate-300"
-                }`}
-              >
-                Product Management
-              </button>
-              <button
-                onClick={() => onTabChange("promotions")}
-                className={`w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors ${
-                  activeTab === "promotions"
-                    ? "text-blue-500 font-semibold"
-                    : "text-slate-500 hover:text-slate-300"
-                }`}
-              >
-                Promotion Management
-              </button>
-              <button
-                onClick={() => onTabChange("offers")}
-                className={`w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors ${
-                  activeTab === "offers"
-                    ? "text-blue-500 font-semibold"
-                    : "text-slate-500 hover:text-slate-300"
-                }`}
-              >
-                Offer Catalog (XLSX)
-              </button>
-            </div>
-          )}
-        </div>
       </nav>
       
       <div className="p-4 border-t border-slate-800 text-[10px] text-slate-500 text-center">

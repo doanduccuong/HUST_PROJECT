@@ -59,6 +59,8 @@ export function useCrmViewModel(token) {
   // Products State
   const [products, setProducts] = useState([]);
 
+  const [dashboardDate, setDashboardDate] = useState("2026-07-23");
+
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -69,7 +71,9 @@ export function useCrmViewModel(token) {
 
     try {
       // 1. Fetch Aggregated Stats
-      const statsRes = await Client.get("/api/v1/dashboard/stats");
+      const statsRes = await Client.get("/api/v1/dashboard/stats", {
+        params: { date: dashboardDate }
+      });
       setDashboardStats(statsRes.data);
 
       // 2. Fetch Orders
@@ -123,7 +127,7 @@ export function useCrmViewModel(token) {
     } catch (err) {
       console.error("Failed to load database CRM data via Axios:", err);
     }
-  }, [token]);
+  }, [token, dashboardDate]);
 
   // Trigger data load on token authentication
   useEffect(() => {
@@ -131,7 +135,7 @@ export function useCrmViewModel(token) {
       void fetchCrmData();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [fetchCrmData, activeTab]); // Refresh when tab switches or token changes
+  }, [fetchCrmData, activeTab, dashboardDate]); // Refresh when tab switches, date changes, or token changes
 
   const handleStatusChange = async (status) => {
     setAgentStatus(status);
@@ -209,6 +213,8 @@ export function useCrmViewModel(token) {
     currentPage,
     setCurrentPage,
     itemsPerPage,
+    dashboardDate,
+    setDashboardDate,
     refreshData: fetchCrmData
   };
 }

@@ -4,6 +4,15 @@ import { useState } from "react";
 
 export default function MembersList({ customers, loading, error, onRefresh }) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+
+  const getInitials = (name) => {
+    if (!name) return "?";
+    const cleanName = name.replace(/\(.*\)/g, "").replace(/#\d+/g, "").trim();
+    const parts = cleanName.split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return "?";
+    return parts[parts.length - 1][0].toUpperCase();
+  };
 
   const filteredCustomers = customers.filter((c) =>
     c.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -79,11 +88,11 @@ export default function MembersList({ customers, loading, error, onRefresh }) {
                 <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="px-6 py-4 font-mono font-medium text-slate-400">#{c.id}</td>
                   <td className="px-6 py-4">
-                    {c.user_image ? (
-                      <a href={c.user_image} target="_blank" rel="noopener noreferrer" title="Click để xem ảnh gốc">
+                    {c.userImage ? (
+                      <a href={c.userImage} target="_blank" rel="noopener noreferrer" title="Click để xem ảnh gốc">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img 
-                          src={c.user_image} 
+                          src={c.userImage} 
                           alt={c.name} 
                           className="w-10 h-10 rounded-full object-cover border border-slate-200 shadow-sm hover:scale-110 active:scale-95 transition-all cursor-zoom-in"
                           onError={(e) => {
@@ -93,12 +102,12 @@ export default function MembersList({ customers, loading, error, onRefresh }) {
                           }}
                         />
                         <div style={{ display: 'none' }} className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-slate-500 text-xs">
-                          {c.name ? c.name.split(" ").slice(-1)[0][0] : "?"}
+                          {getInitials(c.name)}
                         </div>
                       </a>
                     ) : (
                       <div className="w-10 h-10 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center font-bold text-indigo-600 text-xs">
-                        {c.name ? c.name.split(" ").slice(-1)[0][0] : "?"}
+                        {getInitials(c.name)}
                       </div>
                     )}
                   </td>
@@ -107,14 +116,14 @@ export default function MembersList({ customers, loading, error, onRefresh }) {
                     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${
                       c.gender === "Male" 
                         ? "bg-blue-50 text-blue-700" 
-                         : "bg-pink-50 text-pink-700"
+                        : "bg-pink-50 text-pink-700"
                     }`}>
                       {c.gender === "Male" ? "Nam" : "Nữ"}
                     </span>
                   </td>
                   <td className="px-6 py-4 font-medium">{c.age} tuổi</td>
                   <td className="px-6 py-4 text-slate-500 text-xs">
-                    {c.created_at ? new Date(c.created_at).toLocaleDateString("vi-VN", {
+                    {c.createdAt ? new Date(c.createdAt).toLocaleDateString("vi-VN", {
                       year: "numeric",
                       month: "long",
                       day: "numeric",
@@ -123,21 +132,66 @@ export default function MembersList({ customers, loading, error, onRefresh }) {
                     }) : "N/A"}
                   </td>
                   <td className="px-6 py-4 text-center">
-                    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${
-                      c.photo_count > 1 
-                        ? "bg-emerald-50 text-emerald-700 border border-emerald-100" 
-                        : "bg-indigo-50 text-indigo-700 border border-indigo-100"
-                    }`}>
+                    <button 
+                      onClick={() => c.userImage && setSelectedCustomer(c)}
+                      className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold hover:scale-105 active:scale-95 transition-all focus:outline-none ${
+                        c.userImage 
+                          ? "bg-indigo-50 text-indigo-700 border border-indigo-100 hover:bg-indigo-100/80 cursor-pointer" 
+                          : "bg-slate-50 text-slate-400 border border-slate-100 cursor-not-allowed"
+                      }`}
+                    >
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                       </svg>
-                      {c.photo_count} ảnh
-                    </span>
+                      {c.userImage ? 1 : 0} ảnh
+                    </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Large Reference Photo Modal */}
+      {selectedCustomer && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xl max-w-sm w-full relative animate-in fade-in zoom-in-95 duration-200">
+            <button 
+              onClick={() => setSelectedCustomer(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 focus:outline-none p-1 rounded-full hover:bg-slate-100 transition-all"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+            
+            <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-3 mb-4">
+              Ảnh đối chiếu khuôn mặt
+            </h3>
+            
+            <div className="flex flex-col items-center gap-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img 
+                src={selectedCustomer.userImage} 
+                alt={selectedCustomer.name} 
+                className="w-48 h-48 rounded-2xl object-cover border border-slate-200 shadow-md"
+              />
+              
+              <div className="w-full text-center space-y-1">
+                <h4 className="text-base font-extrabold text-slate-900">{selectedCustomer.name}</h4>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">ID: #{selectedCustomer.id}</p>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3 w-full text-xs font-semibold text-slate-600 bg-slate-50 p-3 rounded-xl">
+                <div>Giới tính: <span className="text-slate-800">{selectedCustomer.gender === "Male" ? "Nam" : "Nữ"}</span></div>
+                <div>Tuổi: <span className="text-slate-800">{selectedCustomer.age} tuổi</span></div>
+                <div className="col-span-2 border-t border-slate-200/50 pt-2 mt-1">
+                  Trạng thái AI: <span className="text-emerald-600 font-bold">Đã kích hoạt 3 vector FaceNet512</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

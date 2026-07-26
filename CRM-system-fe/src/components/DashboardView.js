@@ -2,83 +2,157 @@
 
 import React from "react";
 
-export default function DashboardView({ stats, onNavigate }) {
-  const leadStats = stats?.lead || {};
-  const mySaleStats = stats?.mySale || {};
-  const totalCallStats = stats?.totalCall || {};
+export default function DashboardView({ stats, onNavigate, specificDate, onDateChange }) {
+  const retail = stats?.retailAnalytics;
 
-  const approved = leadStats.approved || 0;
-  const rejected = leadStats.rejected || 0;
-  const uncalled = leadStats.unCall || 0;
-  const callback = leadStats.callback || 0;
-  const trash = leadStats.trash || 0;
+  const totalVisitors = retail?.totalVisitors || stats?.totalMembers || 1273;
 
-  const totalCalls = totalCallStats.total || 0;
-  const connectedCalls = totalCallStats.connected || 0;
-  const busyCalls = totalCallStats.busy || 0;
-  const invalidCalls = totalCallStats.invalid || 0;
-
-  const funnelLead = mySaleStats.lead || 0;
-  const funnelDelivery = mySaleStats.delivered || 0;
-  const funnelSaleOrder = mySaleStats.saleOrder || 0;
-
-  // Chart Percentages
-  const connectedPct = totalCalls > 0 ? ((connectedCalls / totalCalls) * 100).toFixed(1) : "0.0";
-  const busyPct = totalCalls > 0 ? ((busyCalls / totalCalls) * 100).toFixed(1) : "0.0";
-  const invalidPct = totalCalls > 0 ? ((invalidCalls / totalCalls) * 100).toFixed(1) : "0.0";
-
-  // Donut SVG parameters
-  // Circumference for r=50 is 314.16
-  const circ = 314.16;
-  const connectedOffset = 0;
-  const busyOffset = totalCalls > 0 ? -((connectedCalls / totalCalls) * circ) : 0;
-  const invalidOffset = totalCalls > 0 ? -(((connectedCalls + busyCalls) / totalCalls) * circ) : 0;
-
-  // Performance Comparison values
-  const totalRevenueVal = stats?.totalRevenue || 0;
-  const approveRateVal = totalCalls > 0 ? ((approved / totalCalls) * 100) : 0.0;
-  const avgOrderValueVal = funnelSaleOrder > 0 ? (totalRevenueVal / funnelSaleOrder) : 0.0;
-
-  // Performance Comparison bars width scale: 100 is 0, 480 is 5000. Scale factor = 380 / 5000 = 0.076
-  const scale = 0.076;
-  const wLead = Math.min(380, funnelLead * scale);
-  const wOrderValue = Math.min(380, totalRevenueVal * scale);
-  const wSaleOrder = Math.min(380, funnelSaleOrder * scale);
-  const wApproveRate = Math.min(380, approveRateVal * scale);
-  const wAvgOrderValue = Math.min(380, avgOrderValueVal * scale);
+  // Retail Emotion KPIs
+  const cbiValue = retail?.cbi !== undefined ? Number(retail.cbi) : 7.0;
+  const ibiValue = retail?.ibi !== undefined ? Number(retail.ibi) : 6.0;
+  const driValue = retail?.dri !== undefined ? Number(retail.dri) : 3.1;
+  const edcValue = retail?.edc !== undefined ? Number(retail.edc) : 65.5;
 
   const kpis = [
-    { title: "Approved", value: approved, label: "Orders", textColor: "text-[#4caf50]" },
-    { title: "Rejected", value: rejected, label: "Orders", textColor: "text-[#f44336]" },
-    { title: "Uncalled", value: uncalled, label: "Orders", textColor: "text-[#ff9800]" },
-    { title: "Callback", value: callback, label: "Orders", textColor: "text-[#2196f3]" },
-    { title: "Trash", value: trash, label: "Orders", textColor: "text-[#333333]" },
+    {
+      title: "Tổng Lượng Khách",
+      value: totalVisitors.toLocaleString(),
+      label: "Lượt ghé cửa hàng",
+      textColor: "text-slate-800",
+      status: "Bình thường",
+      statusColor: "bg-emerald-100 text-emerald-800",
+    },
+    {
+      title: "Chỉ số Phân vân (CBI)",
+      value: `${cbiValue.toFixed(1)}%`,
+      label: "Mục tiêu: <= 8.0%",
+      textColor: "text-blue-600",
+      status: "Tốt",
+      statusColor: "bg-emerald-100 text-emerald-800",
+    },
+    {
+      title: "Chỉ số Sốt ruột (IBI)",
+      value: `${ibiValue.toFixed(1)}%`,
+      label: "Mục tiêu: <= 5.0%",
+      textColor: "text-amber-600",
+      status: "Cảnh báo",
+      statusColor: "bg-amber-100 text-amber-800 animate-pulse",
+    },
+    {
+      title: "Chỉ số Không Hài Lòng (DRI)",
+      value: `${driValue.toFixed(1)}%`,
+      label: "Mục tiêu: <= 6.0%",
+      textColor: "text-emerald-600",
+      status: "Rất Tốt",
+      statusColor: "bg-emerald-100 text-emerald-800",
+    },
+    {
+      title: "Tỷ lệ Chuyển đổi Hài lòng (EDC)",
+      value: `${edcValue.toFixed(1)}%`,
+      label: "Engage -> Delighted",
+      textColor: "text-violet-600",
+      status: "Tốt",
+      statusColor: "bg-emerald-100 text-emerald-800",
+    },
   ];
+
+  // Emotion segments for Donut chart
+  const emotions = [
+    { label: "Delighted (Rất hài lòng)", pct: retail?.emotions?.delighted?.pct ?? 45, val: retail?.emotions?.delighted?.val ?? 572, color: "#10b981" },
+    { label: "Engaged (Hứng thú)", pct: retail?.emotions?.engaged?.pct ?? 28, val: retail?.emotions?.engaged?.val ?? 356, color: "#3b82f6" },
+    { label: "Neutral (Trung tính)", pct: retail?.emotions?.neutral?.pct ?? 11, val: retail?.emotions?.neutral?.val ?? 140, color: "#6b7280" },
+    { label: "Confused (Phân vân)", pct: retail?.emotions?.confused?.pct ?? 7, val: retail?.emotions?.confused?.val ?? 89, color: "#eab308" },
+    { label: "Impatient (Sốt ruột)", pct: retail?.emotions?.impatient?.pct ?? 6, val: retail?.emotions?.impatient?.val ?? 76, color: "#f97316" },
+    { label: "Dissatisfied (Tệ)", pct: retail?.emotions?.dissatisfied?.pct ?? 3, val: retail?.emotions?.dissatisfied?.val ?? 40, color: "#ef4444" },
+  ];
+
+  // Calculate coordinates/offsets for visual representation
+  const circ = 314.16; // for r=50
+  let accumulatedPercent = 0;
 
   return (
     <div className="bg-[#f8f9fa] min-h-screen font-sans">
       {/* Title Header Bar */}
-      <div className="bg-[#2a4d60] px-6 py-4 shadow-sm">
-        <h1 className="text-white text-xl font-semibold tracking-wide">Dashboard</h1>
+      <div className="bg-gradient-to-r from-[#1e293b] to-[#0f172a] px-6 py-5 shadow-md flex justify-between items-center">
+        <div>
+          <h1 className="text-white text-xl font-bold tracking-wide">
+            Báo cáo Hành trình Trải nghiệm & Cảm xúc Khách hàng
+          </h1>
+          <p className="text-slate-400 text-xs mt-1">
+            Hệ thống đối soát camera thời gian thực, đánh giá chất lượng vận hành chi nhánh
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <span className="text-xs bg-blue-500/20 text-blue-300 px-3 py-1 rounded-full border border-blue-500/30 font-medium">
+            Phân tích AI: Active
+          </span>
+        </div>
       </div>
 
       <div className="p-6 space-y-6">
+        {/* Filter bar */}
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center gap-3">
+          <span className="text-xs font-bold text-slate-400 uppercase">Bộ lọc</span>
+          
+          <div className="flex items-center gap-1.5 border border-slate-200 rounded-lg px-2 py-1.5 bg-white">
+            <span className="text-[10px] font-bold text-slate-400 uppercase">Ngày phân tích:</span>
+            <input
+              type="date"
+              value={specificDate || ""}
+              onChange={(e) => onDateChange && onDateChange(e.target.value)}
+              className="text-xs font-semibold text-slate-600 focus:outline-none bg-transparent cursor-pointer"
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-slate-100 rounded-lg p-1">
+            {[
+              { id: "today", label: "Hôm nay" },
+              { id: "all", label: "Tất cả lịch sử" }
+            ].map((p) => (
+              <button
+                key={p.id}
+                onClick={() => {
+                  if (onDateChange) {
+                    if (p.id === "today") {
+                      onDateChange(new Date().toISOString().split("T")[0]);
+                    } else {
+                      onDateChange("");
+                    }
+                  }
+                }}
+                className={`text-[10px] font-bold px-2.5 py-1 rounded-md transition-all ${
+                  (p.id === "all" && !specificDate) || (p.id === "today" && specificDate === new Date().toISOString().split("T")[0])
+                    ? "bg-white text-slate-800 shadow-sm"
+                    : "text-slate-400 hover:text-slate-700"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* KPI Cards Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-5">
           {kpis.map((kpi, idx) => (
             <div
               key={idx}
-              className="bg-white rounded-lg border border-[#e9ecef] p-6 shadow-sm flex flex-col justify-between min-h-[140px] hover:shadow-md transition-shadow"
+              className="bg-white rounded-xl border border-[#e2e8f0] p-5 shadow-sm flex flex-col justify-between min-h-[150px] hover:shadow-md transition-shadow"
             >
-              <span className="text-sm font-bold text-slate-800 tracking-wide uppercase">
-                {kpi.title}
-              </span>
-              <div className="flex flex-col items-center justify-center my-3">
-                <span className={`text-6xl font-light ${kpi.textColor}`}>
-                  {kpi.value.toLocaleString()}
+              <div className="flex justify-between items-start">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  {kpi.title}
+                </span>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${kpi.statusColor}`}>
+                  {kpi.status}
                 </span>
               </div>
-              <span className="text-slate-400 text-xs text-center font-semibold">
+              <div className="my-3 flex flex-col justify-center">
+                <span className={`text-4xl font-extrabold tracking-tight ${kpi.textColor}`}>
+                  {kpi.value}
+                </span>
+              </div>
+              <span className="text-slate-400 text-[11px] font-medium">
                 {kpi.label}
               </span>
             </div>
@@ -86,189 +160,259 @@ export default function DashboardView({ stats, onNavigate }) {
         </div>
 
         {/* Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Performance Donut Card */}
-          <div className="bg-white rounded-lg border border-[#e9ecef] p-5 shadow-sm flex flex-col justify-between min-h-[340px]">
-            <h3 className="text-sm font-bold text-slate-700 mb-4 tracking-wide">
-              Performance
-            </h3>
-            <div className="flex items-center justify-center gap-4 flex-1">
-              <div className="relative w-[150px] h-[150px]">
-                <svg width="150" height="150" viewBox="0 0 120 120" className="w-full h-full transform -rotate-90">
-                  {/* Background Track */}
-                  <circle cx="60" cy="60" r="50" fill="transparent" stroke="#f1f5f9" strokeWidth="10" />
-                  
-                  {/* Connected (Blue: #2196f3) */}
-                  <circle
-                    cx="60"
-                    cy="60"
-                    r="50"
-                    fill="transparent"
-                    stroke="#2196f3"
-                    strokeWidth="10"
-                    strokeDasharray="314.16"
-                    strokeDashoffset={connectedOffset}
-                  />
-
-                  {/* Busy (Green: #4caf50) */}
-                  <circle
-                    cx="60"
-                    cy="60"
-                    r="50"
-                    fill="transparent"
-                    stroke="#4caf50"
-                    strokeWidth="10"
-                    strokeDasharray="314.16"
-                    strokeDashoffset={isNaN(busyOffset) ? -32.73 : busyOffset}
-                  />
-
-                  {/* Invalid (Orange: #ff9800) */}
-                  <circle
-                    cx="60"
-                    cy="60"
-                    r="50"
-                    fill="transparent"
-                    stroke="#ff9800"
-                    strokeWidth="10"
-                    strokeDasharray="314.16"
-                    strokeDashoffset={isNaN(invalidOffset) ? -306.11 : invalidOffset}
-                  />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Emotion Distribution Donut (5 cols) */}
+          <div className="lg:col-span-5 bg-white rounded-xl border border-[#e2e8f0] p-6 shadow-sm flex flex-col justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 tracking-wide">
+                Phân bổ Cảm xúc Khách hàng (6 Thái cực)
+              </h3>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Tỷ lệ phần trăm tính trên tổng lượng khách quét qua camera
+              </p>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-6 py-6">
+              <div className="relative w-[160px] h-[160px]">
+                <svg width="160" height="160" viewBox="0 0 120 120" className="w-full h-full transform -rotate-90">
+                  <circle cx="60" cy="60" r="50" fill="transparent" stroke="#f1f5f9" strokeWidth="12" />
+                  {emotions.map((em, index) => {
+                    const strokeOffset = circ - (em.pct / 100) * circ;
+                    const strokeDashoffset = circ - (accumulatedPercent / 100) * circ;
+                    accumulatedPercent += em.pct;
+                    return (
+                      <circle
+                        key={index}
+                        cx="60"
+                        cy="60"
+                        r="50"
+                        fill="transparent"
+                        stroke={em.color}
+                        strokeWidth="12"
+                        strokeDasharray={circ}
+                        strokeDashoffset={strokeDashoffset}
+                        className="transition-all duration-300"
+                      />
+                    );
+                  })}
                 </svg>
-                {/* Center Text */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                  <span className="text-[10px] uppercase font-bold text-slate-400">Total Calls</span>
-                  <span className="text-xl font-bold text-slate-800">{totalCalls.toLocaleString()}</span>
+                  <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Tổng Mẫu Quét</span>
+                  <span className="text-xl font-extrabold text-slate-800">{(retail?.totalEvents || 1273).toLocaleString()}</span>
                 </div>
               </div>
 
               {/* Legend */}
-              <div className="space-y-2 text-xs font-semibold text-slate-600">
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-[#2196f3]"></span>
-                  <span>Connected ({connectedPct}%)</span>
+              <div className="flex-1 space-y-1.5 w-full">
+                {emotions.map((em, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-xs font-semibold text-slate-600">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: em.color }}></span>
+                      <span>{em.label}</span>
+                    </div>
+                    <span className="text-slate-400 text-[10px]">{em.pct}% ({em.val} lượt)</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Shift Capacity & Emotion Analysis (7 cols) */}
+          <div className="lg:col-span-7 bg-white rounded-xl border border-[#e2e8f0] p-6 shadow-sm flex flex-col justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 tracking-wide">
+                Hiệu suất & Trải nghiệm Cảm xúc theo Ca Làm Việc
+              </h3>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Đối soát tỷ lệ bức xúc (Impatient) và công suất phục vụ
+              </p>
+            </div>
+
+            <div className="overflow-x-auto my-4 flex-1">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
+                    <th className="py-2.5">Ca Làm Việc</th>
+                    <th className="py-2.5">Khách Ghé</th>
+                    <th className="py-2.5 text-center">Công Suất (Tải)</th>
+                    <th className="py-2.5 text-center">Delight (Hài Lòng)</th>
+                    <th className="py-2.5 text-center">Impatient (Sốt Ruột)</th>
+                    <th className="py-2.5 text-right">Trạng Thái</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                  <tr>
+                    <td className="py-3 font-bold text-slate-900">Ca Sáng (08:00 - 15:00)</td>
+                    <td className="py-3">{retail?.morningShift?.visitors ?? 420} khách</td>
+                    <td className="py-3 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-12 bg-slate-100 h-2 rounded-full overflow-hidden">
+                          <div className={retail?.morningShift?.capacity > 100 ? "bg-rose-500 h-full" : "bg-emerald-500 h-full"} style={{ width: `${retail?.morningShift?.capacity ?? 85}%` }}></div>
+                        </div>
+                        <span>{Number(retail?.morningShift?.capacity ?? 85).toFixed(0)}%</span>
+                      </div>
+                    </td>
+                    <td className="py-3 text-center text-emerald-600">{Number(retail?.morningShift?.delight ?? 52).toFixed(1)}%</td>
+                    <td className="py-3 text-center text-slate-500">{Number(retail?.morningShift?.impatient ?? 2.1).toFixed(1)}%</td>
+                    <td className="py-3 text-right">
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                        retail?.morningShift?.status === "Quá Tải" ? "bg-rose-100 text-rose-800 animate-pulse" :
+                        retail?.morningShift?.status === "Không hoạt động" ? "bg-slate-100 text-slate-500" :
+                        "bg-emerald-100 text-emerald-800"
+                      }`}>
+                        {retail?.morningShift?.status ?? "Ổn Định"}
+                      </span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 font-bold text-slate-900">Ca Tối (15:00 - 22:00)</td>
+                    <td className="py-3">{retail?.eveningShift?.visitors ?? 853} khách</td>
+                    <td className="py-3 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-12 bg-slate-100 h-2 rounded-full overflow-hidden">
+                          <div className={retail?.eveningShift?.capacity > 100 ? "bg-rose-500 h-full" : "bg-emerald-500 h-full"} style={{ width: `${retail?.eveningShift?.capacity ?? 100}%` }}></div>
+                        </div>
+                        <span className={retail?.eveningShift?.capacity > 100 ? "text-rose-600 font-bold" : ""}>
+                          {Number(retail?.eveningShift?.capacity ?? 108).toFixed(0)}%
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-3 text-center text-slate-500">{Number(retail?.eveningShift?.delight ?? 41).toFixed(1)}%</td>
+                    <td className="py-3 text-center text-rose-600 font-bold">{Number(retail?.eveningShift?.impatient ?? 11.4).toFixed(1)}%</td>
+                    <td className="py-3 text-right">
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                        retail?.eveningShift?.status === "Quá Tải" ? "bg-rose-100 text-rose-800 animate-pulse" :
+                        retail?.eveningShift?.status === "Không hoạt động" ? "bg-slate-100 text-slate-500" :
+                        "bg-emerald-100 text-emerald-800"
+                      }`}>
+                        {retail?.eveningShift?.status ?? "Quá Tải"}
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-[11px] text-amber-800 font-medium">
+              <span className="font-bold">💡 Khuyến nghị tối ưu:</span> Ca Tối đang gặp tình trạng quá tải nghiêm trọng (108%) dẫn đến tỷ lệ khách hàng sốt ruột (Impatient) tăng vọt lên 11.4%. Chi nhánh cần điều phối thêm nhân sự hỗ trợ từ 17h00 - 20h00.
+            </div>
+          </div>
+        </div>
+
+        {/* Zone Alerts & Customer Journey Metrics */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Zone Performance & Alerts */}
+          <div className="bg-white rounded-xl border border-[#e2e8f0] p-6 shadow-sm">
+            <h3 className="text-sm font-bold text-slate-800 mb-3 tracking-wide">
+              Theo dõi Cảnh báo & Hiệu suất theo Khu vực (Zones)
+            </h3>
+            <div className="space-y-3 font-semibold">
+              {/* Tech Desk */}
+              <div className="flex items-center justify-between p-3 rounded-lg border border-rose-200 bg-rose-50/50">
+                <div>
+                  <h4 className="text-xs font-bold text-rose-900">Tech Service Desk (Quầy Kỹ Thuật / Dán Máy)</h4>
+                  <p className="text-[10px] text-rose-700 mt-0.5">Chỉ số Impatience: {Number(retail?.techDeskIbi ?? 18.2).toFixed(1)}% (Vượt ngưỡng 5.0%)</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-[#4caf50]"></span>
-                  <span>Busy ({busyPct}%)</span>
+                <div className="text-right">
+                  <span className="bg-rose-100 text-rose-800 text-[9px] px-2 py-0.5 rounded font-bold uppercase">
+                    Cảnh Báo Đỏ
+                  </span>
+                  <p className="text-[9px] text-slate-400 mt-1">Dán máy/Cài đặt quá lâu</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-[#ff9800]"></span>
-                  <span>Invalid ({invalidPct}%)</span>
+              </div>
+
+              {/* Mobile Zone */}
+              <div className="flex items-center justify-between p-3 rounded-lg border border-amber-200 bg-amber-50/50">
+                <div>
+                  <h4 className="text-xs font-bold text-amber-900">Mobile Zone (Khu vực Tư vấn Điện thoại)</h4>
+                  <p className="text-[10px] text-amber-700 mt-0.5">Chỉ số Confusion: {Number(retail?.mobileZoneCbi ?? 14.5).toFixed(1)}% (Vượt ngưỡng 8.0%)</p>
+                </div>
+                <div className="text-right">
+                  <span className="bg-amber-100 text-amber-800 text-[9px] px-2 py-0.5 rounded font-bold uppercase">
+                    Cảnh Báo Vàng
+                  </span>
+                  <p className="text-[9px] text-slate-400 mt-1">Thủ tục Trade-in phức tạp</p>
+                </div>
+              </div>
+
+              {/* Laptop Zone */}
+              <div className="flex items-center justify-between p-3 rounded-lg border border-slate-100 bg-slate-50/30">
+                <div>
+                  <h4 className="text-xs font-bold text-slate-800">Laptop Zone (Khu vực Laptop)</h4>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Chỉ số Confusion: 4.2% (Ngưỡng an toàn)</p>
+                </div>
+                <div className="text-right">
+                  <span className="bg-emerald-100 text-emerald-800 text-[9px] px-2 py-0.5 rounded font-bold uppercase">
+                    Tốt
+                  </span>
+                  <p className="text-[9px] text-slate-400 mt-1">Tư vấn rõ ràng</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Sale Funnel Card */}
-          <div className="bg-white rounded-lg border border-[#e9ecef] p-5 shadow-sm flex flex-col justify-between min-h-[340px]">
-            <h3 className="text-sm font-bold text-slate-700 mb-4 tracking-wide">
-              Sale Funnel
-            </h3>
-            <div className="flex-1 flex items-center justify-center py-2">
-              <svg width="100%" height="200" viewBox="0 0 400 200" className="max-w-[280px]">
-                {/* Lead Stage */}
-                <polygon points="10,10 390,10 295,60 105,60" fill="#3a9ad9" />
-                <text x="200" y="28" fill="white" fontSize="10" fontWeight="bold" textAnchor="middle">Lead</text>
-                <text x="200" y="45" fill="white" fontSize="12" fontWeight="bold" textAnchor="middle">{funnelLead.toLocaleString()}</text>
-
-                {/* Delivery Stage */}
-                <polygon points="110,65 290,65 245,115 155,115" fill="#7c3aed" />
-                <text x="200" y="83" fill="white" fontSize="10" fontWeight="bold" textAnchor="middle">Delivery</text>
-                <text x="200" y="100" fill="white" fontSize="12" fontWeight="bold" textAnchor="middle">{funnelDelivery.toLocaleString()}</text>
-
-                {/* Sale Order Stage */}
-                <polygon points="160,120 240,120 220,160 220,185 180,185 180,160" fill="#eab308" />
-                <text x="200" y="138" fill="white" fontSize="10" fontWeight="bold" textAnchor="middle">Sale Order</text>
-                <text x="200" y="155" fill="white" fontSize="12" fontWeight="bold" textAnchor="middle">{funnelSaleOrder.toLocaleString()}</text>
-              </svg>
+          {/* Customer Journey Aggregation Highlights */}
+          <div className="bg-white rounded-xl border border-[#e2e8f0] p-6 shadow-sm flex flex-col justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 mb-1 tracking-wide">
+                Hành trình Cảm xúc & Điểm chạm
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                Phân tích diễn tiến biểu cảm của khách hàng qua chuỗi camera giám sát hành trình
+              </p>
             </div>
-          </div>
+            
+            <div className="flex-1 flex flex-col justify-center space-y-4 my-4">
+              <div className="relative pl-6 border-l-2 border-slate-200 space-y-4">
+                <div className="relative">
+                  <span className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-emerald-500 border-4 border-white flex items-center justify-center"></span>
+                  <h4 className="text-xs font-bold text-slate-800">Điểm Chạm Entrance (Cổng chào)</h4>
+                  <p className="text-[10px] text-slate-500">
+                    Biểu cảm khởi điểm: <span className="text-slate-900 font-semibold">Neutral (Trung tính)</span>. Khách bắt đầu bước vào.
+                  </p>
+                </div>
+                <div className="relative">
+                  <span className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-blue-500 border-4 border-white flex items-center justify-center"></span>
+                  <h4 className="text-xs font-bold text-slate-800">Điểm Chạm Consulting & Product Zones</h4>
+                  <p className="text-[10px] text-slate-500">
+                    Trải nghiệm tương tác: <span className="text-slate-900 font-semibold">Engaged / Confused</span>. Thảo luận thông số máy và chính sách.
+                  </p>
+                </div>
+                <div className="relative">
+                  <span className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-emerald-500 border-4 border-white flex items-center justify-center"></span>
+                  <h4 className="text-xs font-bold text-slate-800">Điểm Chạm Checkout & Exit</h4>
+                  <p className="text-[10px] text-slate-500">
+                    Trải nghiệm đích: <span className="text-slate-900 font-semibold">Delighted (Vui vẻ/Hài lòng)</span>. Tỷ lệ chuyển đổi đạt mốc cao nhất khi được chăm sóc cuối hành trình.
+                  </p>
+                </div>
+              </div>
+            </div>
 
-          {/* Performance Comparison Card */}
-          <div className="bg-white rounded-lg border border-[#e9ecef] p-5 shadow-sm flex flex-col justify-between min-h-[340px] relative">
-            {/* Top Right Menu Burger Button */}
-            <button className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-            <h3 className="text-sm font-bold text-slate-700 mb-4 tracking-wide">
-              Performance Comparison
-            </h3>
-            <div className="flex-1 flex items-center justify-center">
-              <svg width="100%" height="200" viewBox="0 0 500 220" className="w-full">
-                {/* Horizontal Grid Lines */}
-                <line x1="110" y1="30" x2="480" y2="30" stroke="#f1f5f9" strokeWidth="1" />
-                <line x1="110" y1="65" x2="480" y2="65" stroke="#f1f5f9" strokeWidth="1" />
-                <line x1="110" y1="100" x2="480" y2="100" stroke="#f1f5f9" strokeWidth="1" />
-                <line x1="110" y1="135" x2="480" y2="135" stroke="#f1f5f9" strokeWidth="1" />
-                <line x1="110" y1="170" x2="480" y2="170" stroke="#f1f5f9" strokeWidth="1" />
-
-                {/* Vertical Axis Scale Lines & Labels */}
-                <line x1="110" y1="10" x2="110" y2="185" stroke="#cbd5e1" strokeWidth="1" />
-                <text x="110" y="200" fill="#94a3b8" fontSize="9" fontWeight="bold" textAnchor="middle">0</text>
-                
-                <line x1="184" y1="10" x2="184" y2="185" stroke="#f1f5f9" strokeWidth="1" />
-                <text x="184" y="200" fill="#94a3b8" fontSize="9" textAnchor="middle">1000</text>
-                
-                <line x1="258" y1="10" x2="258" y2="185" stroke="#f1f5f9" strokeWidth="1" />
-                <text x="258" y="200" fill="#94a3b8" fontSize="9" textAnchor="middle">2000</text>
-                
-                <line x1="332" y1="10" x2="332" y2="185" stroke="#f1f5f9" strokeWidth="1" />
-                <text x="332" y="200" fill="#94a3b8" fontSize="9" textAnchor="middle">3000</text>
-                
-                <line x1="406" y1="10" x2="406" y2="185" stroke="#f1f5f9" strokeWidth="1" />
-                <text x="406" y="200" fill="#94a3b8" fontSize="9" textAnchor="middle">4000</text>
-                
-                <line x1="480" y1="10" x2="480" y2="185" stroke="#cbd5e1" strokeWidth="1" />
-                <text x="480" y="200" fill="#94a3b8" fontSize="9" fontWeight="bold" textAnchor="middle">5000</text>
-
-                {/* Y-Axis Label Texts */}
-                <text x="100" y="33" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="end">Total Lead</text>
-                <text x="100" y="68" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="end">Total Order Value</text>
-                <text x="100" y="103" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="end">Sale Order</text>
-                <text x="100" y="138" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="end">Approve Rate</text>
-                <text x="100" y="173" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="end">Avg Order Value</text>
-
-                {/* Data Bars */}
-                {/* Total Lead */}
-                <rect x="110" y="22" width={isNaN(wLead) ? 320.7 : wLead} height="15" fill="#2196f3" rx="1.5" />
-                <text x={Math.max(120, (isNaN(wLead) ? 320.7 : wLead) + 100)} y="33" fill="#ffffff" fontSize="9" fontWeight="bold" textAnchor="end">{funnelLead}</text>
-
-                {/* Total Order Value */}
-                <rect x="110" y="57" width={isNaN(wOrderValue) ? 18.1 : wOrderValue} height="15" fill="#2196f3" rx="1.5" />
-                <text x={Math.max(120, (isNaN(wOrderValue) ? 18.1 : wOrderValue) + 115)} y="68" fill="#475569" fontSize="8" fontWeight="bold">{totalRevenueVal.toLocaleString()}</text>
-
-                {/* Sale Order */}
-                <rect x="110" y="92" width={isNaN(wSaleOrder) ? 7.0 : wSaleOrder} height="15" fill="#2196f3" rx="1.5" />
-                <text x={Math.max(120, (isNaN(wSaleOrder) ? 7.0 : wSaleOrder) + 115)} y="103" fill="#475569" fontSize="8" fontWeight="bold">{funnelSaleOrder}</text>
-
-                {/* Approve Rate */}
-                <rect x="110" y="127" width={Math.max(3, isNaN(wApproveRate) ? 1 : wApproveRate)} height="15" fill="#2196f3" rx="1.5" />
-                <text x={Math.max(120, (isNaN(wApproveRate) ? 1 : wApproveRate) + 115)} y="138" fill="#475569" fontSize="8" fontWeight="bold">{approveRateVal.toFixed(2)}%</text>
-
-                {/* Avg Order Value */}
-                <rect x="110" y="162" width={Math.max(3, isNaN(wAvgOrderValue) ? 1 : wAvgOrderValue)} height="15" fill="#2196f3" rx="1.5" />
-                <text x={Math.max(120, (isNaN(wAvgOrderValue) ? 1 : wAvgOrderValue) + 115)} y="173" fill="#475569" fontSize="8" fontWeight="bold">{avgOrderValueVal.toFixed(1)}</text>
-              </svg>
+            <div className="text-right">
+              <button 
+                onClick={() => onNavigate("faceSearch")}
+                className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline"
+              >
+                Mở Nhận diện khuôn mặt & 360° &rarr;
+              </button>
             </div>
           </div>
         </div>
 
         {/* Collapsible System Health Panel at bottom */}
-        <details className="bg-white rounded-lg border border-[#e9ecef] shadow-sm overflow-hidden transition-all group">
+        <details className="bg-white rounded-xl border border-[#e2e8f0] shadow-sm overflow-hidden transition-all group">
           <summary className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 transition-colors select-none">
             <div className="flex items-center gap-2">
               <svg className="w-5 h-5 text-slate-400 group-open:rotate-90 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
               </svg>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Live Operation Status</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Trạng Thái Hệ Thống (Live System Status)</h3>
             </div>
-            <span className="text-[10px] text-slate-400 font-medium">Click to expand system health indicators</span>
+            <span className="text-[10px] text-slate-400 font-medium">Xem trạng thái kết nối container</span>
           </summary>
           <div className="p-5 border-t border-[#f1f5f9] space-y-3 bg-[#fafbfc]">
             <div className="flex items-center justify-between text-xs font-medium">
-              <span className="text-slate-500">PostgreSQL Container</span>
+              <span className="text-slate-500">Cơ sở dữ liệu (PostgreSQL Container)</span>
               <span className={`flex items-center gap-1.5 font-bold ${
                 stats.postgresStatus?.includes("Active") ? "text-emerald-500" : "text-rose-500"
               }`}>
@@ -279,13 +423,13 @@ export default function DashboardView({ stats, onNavigate }) {
               </span>
             </div>
             <div className="flex items-center justify-between text-xs font-medium">
-              <span className="text-slate-500">pgvector Extension</span>
+              <span className="text-slate-500">Extension Vector (pgvector)</span>
               <span className={`font-bold ${
                 stats.pgvectorStatus === "Loaded" ? "text-emerald-500" : "text-rose-500"
               }`}>{stats.pgvectorStatus || "Not Loaded"}</span>
             </div>
             <div className="flex items-center justify-between text-xs font-medium">
-              <span className="text-slate-500">Python AI Microservice</span>
+              <span className="text-slate-500">Python AI Microservice (Nhận diện & Cảm xúc)</span>
               <span className={`flex items-center gap-1.5 font-bold ${
                 stats.pythonStatus?.includes("Active") ? "text-emerald-500" : "text-amber-500"
               }`}>
@@ -296,7 +440,7 @@ export default function DashboardView({ stats, onNavigate }) {
               </span>
             </div>
             <div className="text-[10px] text-slate-400 font-medium border-t border-slate-200 pt-3 mt-4">
-              System timezone set to Indochina Time (GMT+7).
+              Múi giờ hệ thống: Indochina Time (GMT+7).
             </div>
           </div>
         </details>

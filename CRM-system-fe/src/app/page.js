@@ -12,6 +12,7 @@ import ProductManagementView from "../components/ProductManagementView";
 import FaceSearchView from "../components/FaceSearchView";
 import SalesPerformanceView from "../components/SalesPerformanceView";
 import OfferCatalogView from "../components/OfferCatalogView";
+import ExperienceLogsView from "../components/ExperienceLogsView";
 
 import { useCrmViewModel } from "../viewmodels/useCrmViewModel";
 import { useCustomerViewModel } from "../viewmodels/useCustomerViewModel";
@@ -37,6 +38,8 @@ export default function Home() {
           <DashboardView
             stats={crmVm.dashboardStats}
             onNavigate={crmVm.setActiveTab}
+            specificDate={crmVm.dashboardDate}
+            onDateChange={crmVm.setDashboardDate}
           />
         );
       case "orders":
@@ -48,11 +51,13 @@ export default function Home() {
             onSearch={crmVm.handleSearch}
           />
         );
-      case "products":
+      case "experienceLogs":
         return (
-          <ProductManagementView
+          <ExperienceLogsView
+            token={authVm.token}
             products={crmVm.products}
             onUpdateProduct={crmVm.updateProduct}
+            offerCatalogVm={offerCatalogVm}
           />
         );
       case "cdrs":
@@ -72,8 +77,6 @@ export default function Home() {
         return <FaceSearchView vm={faceSearchVm} />;
       case "salesPerformance":
         return <SalesPerformanceView vm={salesPerformanceVm} />;
-      case "offers":
-        return <OfferCatalogView vm={offerCatalogVm} />;
       case "bulkDistribution":
       case "validation":
       default:
