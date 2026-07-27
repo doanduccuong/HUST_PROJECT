@@ -44,7 +44,7 @@ public class DemoDataInitializer implements CommandLineRunner {
                 .orElseGet(() -> userRepository.save(User.builder()
                         .username("manager")
                         .password(passwordEncoder.encode(managerPassword))
-                        .fullname("Demo CRM Manager")
+                        .fullname("CRM Manager")
                         .email("manager@example.local")
                         .userType("MANAGER")
                         .orgId(1)
@@ -52,13 +52,13 @@ public class DemoDataInitializer implements CommandLineRunner {
                         .build()));
 
         Customer keanu = ensureCustomer(
-                "Keanu Reeves (Demo)",
+                "Keanu Reeves",
                 "Male",
                 61,
                 "https://commons.wikimedia.org/wiki/Special:Redirect/file/Keanu_Reeves-2019.jpg"
         );
         Customer emma = ensureCustomer(
-                "Emma Watson (Demo)",
+                "Emma Watson",
                 "Female",
                 36,
                 "https://commons.wikimedia.org/wiki/Special:Redirect/file/Emma_Watson_2013.jpg"
