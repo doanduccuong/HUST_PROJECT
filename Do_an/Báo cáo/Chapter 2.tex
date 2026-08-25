@@ -5,235 +5,171 @@
 \setcounter{figure}{0}
 \setcounter{table}{0}
 
-\subsection*{2.1. Cơ sở lý thuyết về nhận dạng và đánh giá cảm xúc khách hàng}
-\addcontentsline{toc}{subsection}{\numberline{}2.1. Cơ sở lý thuyết về nhận dạng và đánh giá cảm xúc khách hàng}
+\subsection*{2.1. Quy trình xử lý ảnh khuôn mặt trong thị giác máy tính}
+\addcontentsline{toc}{subsection}{\numberline{}2.1. Quy trình xử lý ảnh khuôn mặt trong thị giác máy tính}
 
-Để đóng vai trò là nguồn thu thập dữ liệu đầu vào cho hệ thống thông tin, quy trình sinh trắc học và phân tích trạng thái khuôn mặt khách hàng tập trung vào hai nhiệm vụ chính: xác định danh tính và nhận biết phản ứng cảm xúc tức thời.
+Trong các hệ thống thị giác máy tính phục vụ phân tích hành vi người dùng, quy trình tiền xử lý ảnh khuôn mặt đóng vai trò quyết định đến độ chính xác của các mô hình học sâu ở hạ nguồn. Một luồng xử lý chuẩn bao gồm ba bước cơ bản: phát hiện khuôn mặt, căn chỉnh hình học và kiểm soát chất lượng ảnh thu nhận.
 
-\subsubsection*{2.1.1. Quy trình nhận dạng khuôn mặt tự động}
-\addcontentsline{toc}{subsubsection}{\numberline{}2.1.1. Quy trình nhận dạng khuôn mặt tự động}
+\subsubsection*{2.1.1. Phát hiện khuôn mặt (Face Detection)}
+\addcontentsline{toc}{subsubsection}{\numberline{}2.1.1. Phát hiện khuôn mặt (Face Detection)}
 
-Nhận dạng khuôn mặt là kỹ thuật sinh trắc học không xâm lấn, sử dụng hình ảnh thu nhận từ camera để xác định hoặc kiểm chứng danh tính của một cá nhân. Quy trình này gồm bốn giai đoạn cơ bản:
+Phát hiện khuôn mặt là tác vụ xác định vị trí và kích thước của các khuôn mặt xuất hiện trong một khung hình tĩnh hoặc chuỗi video. Các thuật toán phát hiện hiện đại được chia thành hai nhóm chính:
+\begin{itemize}
+    \item \textbf{Phương pháp truyền thống (Haar Cascades, HOG):} Sử dụng các bộ trích xuất đặc trưng thủ công kết hợp bộ phân lớp tăng cường (AdaBoost) hoặc máy học vector hỗ trợ (SVM). Ưu điểm là tốc độ tính toán cực nhanh trên CPU, nhưng độ chính xác suy giảm mạnh khi đối mặt với góc quay nghiêng, khuôn mặt bị che khuất một phần hoặc điều kiện ánh sáng yếu.
+    \item \textbf{Phương pháp học sâu (Single Shot MultiBox Detector - SSD, RetinaFace):} Mạng nơ-ron tích chập (CNN) phát hiện đồng thời hộp giới hạn (Bounding Box) và xác suất tồn tại khuôn mặt trên nhiều tầng tỷ lệ đặc trưng (Feature Pyramid Networks - FPN). Các mô hình như RetinaFace \cite{retinaface} đạt độ chính xác vượt trội nhờ khả năng dự đoán đồng thời 5 điểm mốc mốc hình học (mắt trái, mắt phải, đỉnh mũi, khóe miệng trái và khóe miệng phải), đáp ứng tốt yêu cầu triển khai trong môi trường bán lẻ thực tế.
+\end{itemize}
+
+\subsubsection*{2.1.2. Căn chỉnh khuôn mặt (Face Alignment)}
+\addcontentsline{toc}{subsubsection}{\numberline{}2.1.2. Căn chỉnh khuôn mặt (Face Alignment)}
+
+Ảnh khuôn mặt sau khi phát hiện thường bị nghiêng theo các trục xoay không gian (Roll, Pitch, Yaw). Quá trình căn chỉnh hình học thực hiện phép biến đổi affine (Affine Transformation) hai chiều nhằm xoay và chuẩn hóa khuôn mặt sao cho đường nối hai đồng tử mắt nằm ngang và tâm khuôn mặt được đưa về chính giữa khung hình chuẩn (kích thước $224 \times 224$ pixels). Phép biến đổi này giúp loại bỏ sự biến thiên do tư thế đầu của khách hàng, đảm bảo mô hình phân loại biểu cảm chỉ tập trung vào sự co giãn của các nhóm cơ mặt.
+
+\subsubsection*{2.1.3. Đánh giá chất lượng ảnh thu nhận (Image Quality Assessment)}
+\addcontentsline{toc}{subsubsection}{\numberline{}2.1.3. Đánh giá chất lượng ảnh thu nhận (Image Quality Assessment)}
+
+Trong môi trường thực tế của cửa hàng, khách hàng liên tục di chuyển khiến nhiều khung hình bị mờ do chuyển động (motion blur), thiếu sáng hoặc cháy sáng. Nếu đưa trực tiếp các khung hình suy biến này vào mô hình AI, kết quả dự đoán sẽ có độ bất định cao và gây nhiễu cho hệ thống phân tích. Do đó, hệ thống tích hợp bộ lọc chất lượng ảnh dựa trên hai kỹ thuật xử lý ảnh số \cite{gonzalez2018digital}:
 \begin{enumerate}
-    \item \textbf{Phát hiện khuôn mặt (Face Detection):} Xác định sự tồn tại và tọa độ vùng chứa khuôn mặt trong một khung hình.
-    \item \textbf{Căn chỉnh khuôn mặt (Face Alignment):} Định vị các mốc điểm hình học quan trọng (mắt, sống mũi, khóe miệng) để xoay và chuẩn hóa khuôn mặt về góc nhìn chính diện.
-    \item \textbf{Trích xuất đặc trưng (Feature Extraction):} Biến đổi hình ảnh khuôn mặt đã căn chỉnh thành một vector số học đại diện (embedding vector) chứa thông tin sinh học đặc trưng duy nhất của cá nhân đó.
-    \item \textbf{So khớp (Face Matching):} So sánh khoảng cách toán học giữa vector mới trích xuất với các vector mẫu lưu trữ trong cơ sở dữ liệu để tìm ra người có độ tương đồng cao nhất.
+    \item \textbf{Phát hiện độ mờ bằng phương sai toán tử Laplace (Laplacian Variance):} Toán tử Laplace 2D là một toán tử đạo hàm bậc hai làm nổi bật các biến thiên cường độ sáng nhanh (cạnh sắc nét trong ảnh). Với ảnh mức xám $I(x, y)$, phương sai của ảnh sau khi tích chập với toán tử Laplace được định nghĩa:
+    \begin{equation}
+    \text{Var}_{\text{Lap}} = \frac{1}{M N} \sum_{x=1}^{M} \sum_{y=1}^{N} \left( \nabla^2 I(x, y) - \mu_{\text{Lap}} \right)^2
+    \end{equation}
+    Trong đó $\nabla^2 I(x, y) = \frac{\partial^2 I}{\partial x^2} + \frac{\partial^2 I}{\partial y^2}$. Ảnh sắc nét có nhiều cạnh rõ ràng nên phương sai $\text{Var}_{\text{Lap}}$ lớn; ngược lại, ảnh bị mờ chuyển động làm mất chi tiết cạnh nên phương sai sẽ giảm mạnh xuống dưới ngưỡng cho phép. Điểm số độ sắc nét được chuẩn hóa về đoạn $[0, 1]$:
+    \begin{equation}
+    S_{\text{blur}} = \min \left( \frac{\text{Var}_{\text{Lap}}}{300.0}, 1.0 \right)
+    \end{equation}
+    
+    \item \textbf{Đánh giá phân bố độ sáng (Brightness Score):} Độ sáng trung bình $\mu_{\text{gray}}$ của vùng khuôn mặt được tính toán. Ảnh đạt chất lượng tối ưu khi độ sáng tiệm cận mức cân bằng trung bình $127.5$ (trên thang 8-bit $[0, 255]$). Điểm số độ sáng được xác định theo công thức:
+    \begin{equation}
+    S_{\text{bright}} = \max \left( 0.0, 1.0 - \frac{|\mu_{\text{gray}} - 127.5|}{127.5} \right)
+    \end{equation}
 \end{enumerate}
 
-\subsubsection*{2.1.2. Mô hình trích xuất đặc trưng nền tảng: Facenet512}
-\addcontentsline{toc}{subsubsection}{\numberline{}2.1.2. Mô hình trích xuất đặc trưng nền tảng: Facenet512}
-
-Trong nghiên cứu này, mô hình Facenet512 được lựa chọn làm mạng nền tảng (backbone model) để trích xuất đặc trưng khuôn mặt nhờ vào các ưu điểm lý thuyết và thực nghiệm sau:
-\begin{itemize}
-    \item \textbf{Khả năng biểu diễn chi tiết cao (512 chiều):} So với phiên bản Facenet 128 chiều truyền thống, Facenet512 ánh xạ khuôn mặt vào không gian vector 512 chiều. Việc tăng chiều không gian giúp mô hình lưu giữ được các đặc trưng hình học tinh vi hơn. Điều này đặc biệt quan trọng đối với phương pháp phân vùng sinh học (cắt nhỏ khuôn mặt thành 3 vùng): khi diện tích ảnh bị thu hẹp, lượng thông tin đặc trưng bị giảm sút đáng kể, do đó vector 512 chiều giúp bảo toàn tối đa năng lực biểu diễn cho từng vùng nhỏ.
-    
-    \item \textbf{Sự tương thích cấu trúc không gian Metric gốc:} Khác với các mô hình nhận dạng sử dụng hàm lỗi phân lớp Softmax, Facenet được thiết kế và huấn luyện trực tiếp bằng hàm Triplet Loss và chuẩn hóa L2 trên mặt cầu đơn vị. Vì không gian đặc trưng của Facenet đã được tối ưu hóa theo khoảng cách hình học từ gốc, nó hoàn toàn tương thích và dễ dàng tích hợp với lớp ánh xạ tuyến tính phụ (Projector) cũng được tối ưu bằng Triplet Loss trong nghiên cứu này, giúp quá trình huấn luyện ma trận chiếu đạt tốc độ hội tụ nhanh và ổn định.
-    
-    \item \textbf{Hiệu năng thực thi thời gian thực:} Facenet512 đạt sự cân bằng tối ưu giữa độ chính xác nhận dạng và chi phí tính toán (Inference time thấp), đảm bảo khả năng triển khai thực tế trên các thiết bị camera giám sát và các máy chủ ứng dụng phổ thông.
-\end{itemize}
-
-Để làm rõ ưu thế của mô hình đề xuất, nghiên cứu tiến hành đối chiếu lý thuyết giữa Facenet512 với ba giải pháp mô hình nhận dạng khuôn mặt phổ biến khác:
-\begin{itemize}
-    \item \textbf{So với Facenet128:} Mặc dù có cùng kiến trúc Inception-ResNet-v1, phiên bản Facenet128 chỉ xuất ra vector đặc trưng có kích thước 128 chiều. Lượng thông tin này quá nhỏ để biểu diễn đầy đủ cấu trúc hình học của các vùng khuôn mặt sau khi bị cắt nhỏ (phân vùng sinh học). Việc sử dụng vector 512 chiều của Facenet512 giúp duy trì mật độ thông tin cao và giảm thiểu đáng kể tỷ lệ nhận dạng lỗi khi đối sánh cục bộ.
-    
-    \item \textbf{So với VGGFace2 (Kiến trúc ResNet-50 / VGG16):} Các mô hình VGGFace2 thường xuất ra vector đặc trưng rất lớn (từ 2048 đến 4096 chiều) và đòi hỏi tài nguyên tính toán (RAM, GPU) và thời gian suy luận cực lớn, không khả thi khi phải trích xuất đặc trưng cho cả 3 phân vùng khuôn mặt độc lập trong thời gian thực. Hơn nữa, VGGFace2 được huấn luyện dựa trên hàm mất mát phân lớp Softmax nên không gian đặc trưng của nó không được tối ưu trực tiếp cho việc tính toán khoảng cách Euclid và Cosine như không gian mặt cầu L2 của Facenet.
-    
-    \item \textbf{So với ArcFace (ResNet-100):} ArcFace đạt độ chính xác rất cao trên các tập dữ liệu tiêu chuẩn nhờ sử dụng hàm lỗi góc Cosine (Additive Angular Margin Loss). Tuy nhiên, không gian vector đặc trưng của ArcFace được tối ưu hóa dựa trên góc xoay thay vì khoảng cách Euclid trực tiếp. Điều này khiến cho việc huấn luyện lớp chiếu thích ứng tuyến tính ($\bm{z} = \bm{x}\bm{W} + \bm{b}$) bằng hàm Triplet Loss thông thường trở nên phức tạp hình học và khó hội tụ hơn so với việc áp dụng trên không gian vector khoảng cách Euclid tự nhiên của Facenet512.
-\end{itemize}
-
-\subsubsection*{2.1.3. Lý thuyết nhận dạng biểu cảm cảm xúc (Emotion Recognition)}
-\addcontentsline{toc}{subsubsection}{\numberline{}2.1.3. Lý thuyết nhận dạng biểu cảm cảm xúc (Emotion Recognition)}
-
-Nhận dạng cảm xúc qua khuôn mặt dựa trên việc phân tích sự chuyển động và biến dạng của các nhóm cơ mặt chính (như cơ vùng chân mày, mắt, miệng). Các biểu cảm cơ bản được phân loại theo lý thuyết của Paul Ekman bao gồm: Vui vẻ (Happy), Trung tính (Neutral), Buồn bã (Sad), Tức giận (Angry), Ngạc nhiên (Surprise), và Sợ hãi (Fear). Trong môi trường bán lẻ và dịch vụ, phản ứng biểu cảm tại các điểm chạm như quầy dịch vụ hoặc quầy thanh toán phản ánh trực tiếp thái độ tiêu dùng và mức độ hài lòng tức thời của khách hàng đối với dịch vụ.
-
-\subsubsection*{2.1.4. Thách thức về sự ổn định dữ liệu nhận dạng do biến đổi diện mạo}
-\addcontentsline{toc}{subsubsection}{\numberline{}2.1.4. Thách thức về sự ổn định dữ liệu nhận dạng do biến đổi diện mạo}
-
-Mặc dù công nghệ nhận diện khuôn mặt đã đạt độ chính xác rất cao trên các tập dữ liệu tiêu chuẩn, hiệu năng thực tế bị ảnh hưởng nghiêm trọng bởi các biến đổi diện mạo của khách hàng:
-\begin{itemize}
-    \item \textbf{Tác động của phẫu thuật thẩm mỹ:} Sự phổ biến của các thủ thuật chỉnh sửa cấu trúc hình học cục bộ (như sửa mũi, độn cằm, cắt mí) tạo ra sự khác biệt lớn giữa hình ảnh đăng ký ban đầu và ảnh quét thực tế.
-    \item \textbf{Tác động của thời gian (Lão hóa):} Sự thay đổi tự nhiên của cơ mặt và nếp nhăn qua nhiều năm đối với khách hàng trung thành lâu năm.
-\end{itemize}
-Sự thay đổi này làm tăng sai số nhận dạng, dẫn đến đứt gãy luồng dữ liệu khách hàng trong hệ thống CRM (hệ thống nhận diện sai khách quen thành khách mới). Do đó, việc nghiên cứu các giải pháp nhận dạng thích ứng bền vững trước PTTM là điều kiện bắt buộc để bảo vệ tính toàn vẹn của dữ liệu phân tích.
-
-\subsubsection*{2.1.5. Cơ sở lý thuyết xác định trọng số dung hợp sinh học}
-\addcontentsline{toc}{subsubsection}{\numberline{}2.1.5. Cơ sở lý thuyết xác định trọng số dung hợp sinh học}
-
-Để tổng hợp thông tin đối sánh từ các phân vùng khác nhau nhằm đưa ra quyết định nhận diện cuối cùng, nghiên cứu này sử dụng lý thuyết **Dung hợp mức điểm số (Score-level Fusion)** theo tổ hợp tuyến tính \cite{ross2003information, ross2006handbook}. Trong hệ thống sinh trắc học đa phân vùng, khoảng cách dung hợp tổng hợp $D_{\text{fusion}}$ giữa khuôn mặt truy vấn và khuôn mặt mẫu được định nghĩa bằng tổng khoảng cách của các phân vùng độc lập nhân với trọng số tương ứng:
+Điểm số chất lượng tổng hợp $Q$ được kết hợp tuyến tính cùng độ tin cậy phát hiện khuôn mặt $C_{\text{face}}$:
 \begin{equation}
-D_{\text{fusion}} = w_{\text{upper}} \cdot d_{\text{upper}} + w_{\text{mid}} \cdot d_{\text{mid}} + w_{\text{lower}} \cdot d_{\text{lower}}
+Q = 0.45 \cdot C_{\text{face}} + 0.35 \cdot S_{\text{blur}} + 0.20 \cdot S_{\text{bright}}
 \end{equation}
-Trong đó, $d_{\text{upper}}, d_{\text{mid}}, d_{\text{lower}}$ lần lượt là khoảng cách Cosine giữa các vector đặc trưng vùng Thượng, vùng Trung và vùng Hạ đã được chiếu thích ứng. Các trọng số $w_{\text{upper}}, w_{\text{mid}}, w_{\text{lower}}$ thỏa mãn điều kiện ràng buộc:
+Khung hình chỉ được chấp nhận đưa vào pipeline nhận dạng biểu cảm khi $Q \ge 0.45$ và $C_{\text{face}} \ge 0.70$. Các khung hình không đạt chuẩn bị loại bỏ và ghi nhận lý do cụ thể (\textit{IMAGE\_BLURRY, IMAGE\_TOO\_DARK, IMAGE\_TOO\_BRIGHT}).
+
+\subsection*{2.2. Lý thuyết nhận dạng biểu cảm khuôn mặt (Facial Expression Recognition - FER)}
+\addcontentsline{toc}{subsection}{\numberline{}2.2. Lý thuyết nhận dạng biểu cảm khuôn mặt (Facial Expression Recognition - FER)}
+
+\subsubsection*{2.2.1. Hệ thống phân loại biểu cảm cơ bản theo Paul Ekman}
+\addcontentsline{toc}{subsubsection}{\numberline{}2.2.1. Hệ thống phân loại biểu cảm cơ bản theo Paul Ekman}
+
+Theo nghiên cứu kinh điển của nhà tâm lý học Paul Ekman và Hệ thống mã hóa hành động cơ mặt (Facial Action Coding System - FACS) \cite{facs}, con người có 6 biểu cảm cơ bản mang tính phổ quát toàn cầu không phụ thuộc vào văn hóa và chủng tộc, kết hợp với trạng thái trung tính để tạo thành \textbf{7 lớp biểu cảm chuẩn}:
+\begin{enumerate}
+    \item \textbf{Vui vẻ (Happy):} Đặc trưng bởi cơ gò má kéo khóe miệng lên trên và cơ vòng mi làm híp mắt (nụ cười Duchenne).
+    \item \textbf{Buồn bã (Sad):} Khóe miệng trễ xuống, đầu trong lông mày nhướng lên và mí mắt trên sụp xuống.
+    \item \textbf{Tức giận (Angry):} Hai lông mày hạ thấp và kéo sát lại gần nhau, ánh mắt nhìn chằm chằm, môi mím chặt.
+    \item \textbf{Sợ hãi (Fear):} Lông mày nhướng cao và kéo lại gần nhau, mí mắt trên mở rộng, miệng hé mở căng thẳng.
+    \item \textbf{Ngạc nhiên (Surprise):} Lông mày cong vút lên cao, mắt mở to tròn, hàm dưới trễ xuống làm mở rộng khoang miệng.
+    \item \textbf{Ghê sợ / Khó chịu (Disgust):} Mũi nhăn lại, môi trên kéo cao lên làm lộ răng trên.
+    \item \textbf{Trung tính (Neutral):} Các cơ mặt ở trạng thái thả lỏng, không có biến dạng cơ học rõ rệt.
+\end{enumerate}
+
+\subsubsection*{2.2.2. Kiến trúc mạng nơ-ron tích chập (CNN) trong bài toán FER}
+\addcontentsline{toc}{subsubsection}{\numberline{}2.2.2. Kiến trúc mạng nơ-ron tích chập (CNN) trong bài toán FER}
+
+Bài toán FER được mô hình hóa dưới dạng bài toán phân lớp đa lớp (Multi-class Classification). Các kiến trúc mạng học sâu hiện đại sử dụng các khối tích chập sâu kết hợp cơ chế chú ý (Attention Mechanisms) và kỹ thuật chuyển giao tri thức (Transfer Learning) từ các mô hình được tiền huấn luyện trên các tập dữ liệu khuôn mặt quy mô lớn (như VGGFace2, MS-Celeb-1M, AffectNet, FER2013 \cite{fer2013}):
+\begin{itemize}
+    \item \textbf{MobileNetV2 / MobileNetV3 \cite{mobilenetv2}:} Sử dụng các khối tích chập tách biệt theo chiều sâu (Depthwise Separable Convolutions) và cấu trúc đảo ngược nút cổ chai (Inverted Residuals). Kiến trúc này giúp giảm đáng kể số lượng tham số và số phép tính dấu phẩy động (FLOPs), cho phép triển khai suy luận với tốc độ trên 30 FPS trên các máy chủ phổ thông hoặc thiết bị biên.
+    \item \textbf{EfficientNet / ResNet:} Khai thác các kết nối tắt (Residual Connections) để huấn luyện các mạng sâu hơn mà không bị triệt tiêu gradient, mang lại độ chính xác cao đối với các biểu cảm vi mô (micro-expressions) có độ tinh tế lớn.
+\end{itemize}
+
+\subsubsection*{2.2.3. Hàm mất mát phân lớp và phân bố xác suất Softmax}
+\addcontentsline{toc}{subsubsection}{\numberline{}2.2.3. Hàm mất mát phân lớp và phân bố xác suất Softmax}
+
+Đầu ra của mạng nơ-ron là vector logits $\bm{z} = [z_1, z_2, \dots, z_7]^T \in \mathbb{R}^7$. Hàm kích hoạt Softmax chuyển đổi vector logits thành phân bố xác suất hợp lệ trên 7 lớp biểu cảm:
 \begin{equation}
-w_{\text{upper}} + w_{\text{mid}} + w_{\text{lower}} = 1.0 \quad \text{và} \quad w_i \ge 0
+p_i = \frac{e^{z_i}}{\sum_{j=1}^{7} e^{z_j}}, \quad \forall i \in \{1, 2, \dots, 7\}, \quad \text{sao cho} \quad \sum_{i=1}^{7} p_i = 1.0
 \end{equation}
+Mô hình được tối ưu hóa bằng hàm mất mát Cross-Entropy:
+\begin{equation}
+\mathcal{L}_{\text{CE}} = - \sum_{i=1}^{7} y_i \log(p_i)
+\end{equation}
+Trong đó $\bm{y}$ là vector nhãn one-hot thực tế. Lớp có xác suất lớn nhất $p_{\text{max}} = \max_i(p_i)$ được chọn làm biểu cảm chủ đạo (Dominant Expression), và giá trị $p_{\text{max}}$ chính là độ tin cậy dự đoán (Confidence).
 
-\noindent \textbf{Phương pháp và lý do xác định trọng số:}
+\subsection*{2.3. Xử lý chuỗi thời gian trong giám sát cảm xúc video (Temporal Processing)}
+\addcontentsline{toc}{subsection}{\numberline{}2.3. Xử lý chuỗi thời gian trong giám sát cảm xúc video (Temporal Processing)}
 
-Trong các hệ thống nhận diện khuôn mặt truyền thống, thông tin của toàn bộ khuôn mặt thường được xử lý đồng nhất hoặc gán trọng số tương đương nhau ($w_i = 0.33$ cho mỗi vùng). Tuy nhiên, phương pháp tiếp cận này gặp thất bại nghiêm trọng khi đối mặt với các đối tượng đã trải qua phẫu thuật thẩm mỹ (PTTM). Lý do là vì các thủ thuật can thiệp thẩm mỹ không tác động đồng đều lên toàn bộ khuôn mặt, mà thường tập trung thay đổi mạnh mẽ ở một vài vùng cục bộ (chẳng hạn như gọt cằm V-line ở vùng Hạ, nâng mũi ở vùng Trung). 
+\subsubsection*{2.3.1. Thách thức về tính không ổn định khung hình (Frame-level Flickering)}
+\addcontentsline{toc}{subsubsection}{\numberline{}2.3.1. Thách thức về tính không ổn định khung hình (Frame-level Flickering)}
 
-Nếu sử dụng bộ trọng số đồng đều, một sự biến đổi hình học quá lớn ở vùng Hạ (như thay đổi kích thước và hình dáng xương cằm) sẽ sinh ra một khoảng cách sai biệt $d_{\text{lower}}$ cực kỳ lớn. Khoảng cách lỗi này sẽ lấn át hoàn toàn các giá trị đối sánh chính xác khác ở các vùng ổn định như mắt hay trán, dẫn đến việc hệ thống nhận diện sai lệch hoặc từ chối nhận dạng sai danh tính thực của khách hàng. Do đó, việc tìm kiếm một bộ trọng số phân phối bất đối xứng là điều kiện bắt buộc để bảo vệ hệ thống trước các biến dạng cục bộ.
+Trong kịch bản camera giám sát thực tế, việc đưa ra kết luận về trải nghiệm của khách hàng chỉ dựa trên một khung hình đơn lẻ tiềm ẩn rủi ro rất cao. Khách hàng có thể chớp mắt, quay đầu hoặc nói chuyện, khiến biểu cảm trên từng khung hình biến đổi liên tục (ví dụ: đang cười nhưng khi nói miệng mở có thể bị nhận nhầm thành ngạc nhiên trong 1-2 frames). Hiện tượng dự đoán nhấp nháy này tạo ra các giá trị ngoại lai (outliers) và phá vỡ tính liên tục của dữ liệu thống kê.
 
-Việc xác định các giá trị trọng số cụ thể $(0.5; 0.3; 0.2)$ được chứng minh tính tối ưu khoa học, kế thừa từ phương pháp luận gán trọng số bất đối xứng thích ứng bảo vệ vùng nhận dạng trước phẫu thuật thẩm mỹ của R. Singh, M. Vatsa cùng các cộng sự \cite{singh2010database, bhatt2013evolutionary}, thông qua thực nghiệm tìm kiếm tối ưu hóa tham số **Tìm kiếm lưới (Grid Search Optimization)** trên tập dữ liệu kiểm thử trước/sau phẫu thuật:
+\subsubsection*{2.3.2. Thuật toán làm mịn chuỗi thời gian bằng Trung bình trượt hàm mũ (EMA)}
+\addcontentsline{toc}{subsubsection}{\numberline{}2.3.2. Thuật toán làm mịn chuỗi thời gian bằng Trung bình trượt hàm mũ (EMA)}
 
+Để triệt tiêu nhiễu nhấp nháy và nắm bắt chính xác xu hướng cảm xúc thực của khách hàng trong suốt phiên tương tác, giải thuật làm mịn chuỗi thời gian bằng Trung bình trượt hàm mũ (Exponential Moving Average - EMA) được áp dụng trên vector xác suất 7 lớp. 
+
+Gọi $\bm{p}_t = [p_t^{(1)}, \dots, p_t^{(7)}]^T$ là vector xác suất đầu ra của mô hình tại khung hình thứ $t$, và $\bm{s}_t = [s_t^{(1)}, \dots, s_t^{(7)}]^T$ là vector xác suất đã làm mịn. Công thức cập nhật đệ quy được định nghĩa:
+\begin{equation}
+\bm{s}_t = \alpha \cdot \bm{p}_t + (1 - \alpha) \cdot \bm{s}_{t-1}
+\end{equation}
+Trong đó $\alpha \in (0, 1]$ là hệ số làm mịn (Smoothing Factor). Khi $\alpha \approx 0.3 - 0.4$, hệ thống vừa phản ứng nhanh với các thay đổi cảm xúc bền vững của khách hàng, vừa triệt tiêu hiệu quả các xung nhiễu ngắn hạn. Biểu cảm chủ đạo của phiên được xác định dựa trên vector $\bm{s}_t$ sau khi đã tích lũy đủ số lượng khung hình hợp lệ tối thiểu ($N_{\text{frames}} \ge N_{\text{min}}$).
+
+\subsubsection*{2.3.3. Phân tích chuyển dịch biểu cảm (Expression Transitions)}
+\addcontentsline{toc}{subsubsection}{\numberline{}2.3.3. Phân tích chuyển dịch biểu cảm (Expression Transitions)}
+
+Bên cạnh việc ghi nhận trạng thái tĩnh, sự biến đổi cảm xúc theo dòng thời gian (ví dụ từ trạng thái trung tính/bối rối sang vui vẻ, hoặc từ trung tính sang khó chịu) mang lại giá trị phân tích nghiệp vụ to lớn. Bằng cách theo dõi trạng thái cảm xúc chủ đạo sau làm mịn qua các cửa sổ thời gian liên tiếp, hệ thống xây dựng đồ thị chuyển dịch cảm xúc (\textit{Expression Transition Matrix}):
+\begin{equation}
+T_{i \to j} = P(\text{State}_{t+1} = j \mid \text{State}_t = i)
+\end{equation}
+Một tỷ lệ chuyển dịch cao từ $\text{Neutral} \to \text{Happy}$ tại quầy tư vấn chứng minh nhân viên đã giải thích thuyết phục; ngược lại, chuyển dịch $\text{Neutral} \to \text{Angry}$ tại quầy thu ngân là tín hiệu cảnh báo quy trình thanh toán gặp trục trặc.
+
+\subsection*{2.4. Lý thuyết quản trị trải nghiệm khách hàng (Customer Experience - CX) trong bán lẻ}
+\addcontentsline{toc}{subsection}{\numberline{}2.4. Lý thuyết quản trị trải nghiệm khách hàng (Customer Experience - CX) trong bán lẻ}
+
+\subsubsection*{2.4.1. Mô hình hành trình khách hàng đa điểm chạm (Customer Journey Touchpoints)}
+\addcontentsline{toc}{subsubsection}{\numberline{}2.4.1. Mô hình hành trình khách hàng đa điểm chạm (Customer Journey Touchpoints)}
+
+Trong bán lẻ hiện đại, hành trình của một khách hàng trong cửa hàng được chia thành chuỗi các điểm chạm không gian liên tiếp:
+\begin{center}
+$\text{Cổng vào} \xrightarrow{\text{Zone 1}} \text{Khu chờ} \xrightarrow{\text{Zone 2}} \text{Quầy tư vấn} \xrightarrow{\text{Zone 3}} \text{Khu sản phẩm} \xrightarrow{\text{Zone 4}} \text{Quầy thanh toán} \xrightarrow{\text{Zone 5}} \text{Cổng ra}$
+\end{center}
+Mỗi khu vực có chức năng nghiệp vụ riêng biệt và thời gian dừng chân (Dwell Time) dự kiến khác nhau. Việc gắn thẻ sự kiện cảm xúc theo từng khu vực cho phép doanh nghiệp đánh giá chính xác chất lượng vận hành của từng bộ phận.
+
+\subsubsection*{2.4.2. Suy luận trạng thái trải nghiệm bán lẻ đa tín hiệu (Inferred Experience States)}
+\addcontentsline{toc}{subsubsection}{\numberline{}2.4.2. Suy luận trạng thái trải nghiệm bán lẻ đa tín hiệu (Inferred Experience States)}
+
+Để chuyển đổi các nhãn biểu cảm thuần túy thành thông tin nghiệp vụ CRM có thể hành động, hệ thống định nghĩa 6 trạng thái trải nghiệm được suy luận từ sự kết hợp của: \textit{Xác suất 7 lớp FER + Chuỗi thời gian + Thời gian dừng chân + Khu vực + Sự kiện đơn hàng}:
+\begin{itemize}
+    \item \textbf{\texttt{DELIGHTED} (Rất hài lòng):} Xác suất $p_{\text{happy}} \ge 0.55$ duy trì ổn định.
+    \item \textbf{\texttt{ENGAGED} (Hứng thú, chú ý cao):} Tương tác tập trung tại khu vực sản phẩm hoặc quầy tư vấn với biểu cảm tích cực/tập trung kéo dài.
+    \item \textbf{\texttt{CONFUSED} (Phân vân, bối rối):} Xác suất $p_{\text{surprise}}$ hoặc $p_{\text{fear}} \ge 0.40$ khi xem bảng giá hoặc nghe tư vấn, thể hiện khách hàng cần hỗ trợ giải thích thêm.
+    \item \textbf{\texttt{IMPATIENT} (Sốt ruột, mất kiên nhẫn):} Thời gian chờ đợi tại quầy thu ngân hoặc khu vực chờ vượt ngưỡng tiêu chuẩn kết hợp với biểu cảm trung tính giảm dần hoặc có tín hiệu căng thẳng.
+    \item \textbf{\texttt{DISSATISFIED} (Không hài lòng):} Tỷ lệ $\max(p_{\text{angry}}, p_{\text{disgust}}, p_{\text{sad}}) \ge 0.45$.
+    \item \textbf{\texttt{NEUTRAL} (Bình thường):} Khách hàng ở trạng thái cân bằng, không có phản ứng cảm xúc đặc biệt.
+\end{itemize}
+
+\subsubsection*{2.4.3. Các chỉ số đo lường hiệu quả trải nghiệm (Experience Metrics)}
+\addcontentsline{toc}{subsubsection}{\numberline{}2.4.3. Các chỉ số đo lường hiệu quả trải nghiệm (Experience Metrics)}
+
+Hệ thống thiết lập các chỉ số KPI định lượng dựa trên tổng số mẫu hợp lệ $N_{\text{valid}}$:
+\begin{itemize}
+    \item \textbf{Tỷ lệ biểu cảm tích cực (Positive Expression Rate):}
+    \begin{equation}
+    R_{\text{pos}} = \frac{N_{\text{happy}}}{N_{\text{valid}}} \times 100\%
+    \end{equation}
+    \item \textbf{Tỷ lệ biểu cảm tiêu cực (Negative Expression Rate):}
+    \begin{equation}
+    R_{\text{neg}} = \frac{N_{\text{angry}} + N_{\text{disgust}} + N_{\text{sad}} + N_{\text{fear}}}{N_{\text{valid}}} \times 100\%
+    \end{equation}
+    (Lớp \textit{Surprise} được phân tích độc lập vì tính tích cực hoặc tiêu cực phụ thuộc vào ngữ cảnh).
+    \item \textbf{Độ biến thiên cảm xúc trước và sau mua hàng (Experience Delta $\Delta$):}
+    \begin{equation}
+    \Delta_{\text{exp}} = S_{\text{post-purchase}} - S_{\text{pre-purchase}}
+    \end{equation}
+    Chỉ số $\Delta_{\text{exp}} > 0$ khẳng định quá trình phục vụ của nhân viên đã nâng cao sự hài lòng của khách hàng.
+\end{itemize}
+
+\subsection*{2.5. Nguyên tắc bảo mật và bảo vệ quyền riêng tư (Privacy-First)}
+\addcontentsline{toc}{subsection}{\numberline{}2.5. Nguyên tắc bảo mật và bảo vệ quyền riêng tư (Privacy-First)}
+
+Việc phân tích hình ảnh tại nơi công cộng đòi hỏi tuân thủ nghiêm ngặt các quy chuẩn đạo đức AI và bảo vệ dữ liệu cá nhân (GDPR):
 \begin{enumerate}
-    \item \textbf{Phương pháp thực nghiệm xác định trọng số (Grid Search):}
-    Để chứng minh tính tối ưu của bộ trọng số đề xuất, nghiên cứu đã xây dựng bộ phân lớp tùy biến \textbf{BioFusionClassifier} (kế thừa các lớp cơ sở của thư viện Scikit-learn) và tiến hành quét thử nghiệm các tổ hợp trọng số khác nhau với bước nhảy $0.05$ thông qua công cụ tìm kiếm siêu tham số tối ưu \textbf{GridSearchCV}. Quy trình thực nghiệm này được hiện thực hóa và kiểm thử tự động thông qua tập lệnh Python \textbf{grid\_search\_weights.py} và tệp Jupyter Notebook tương tác \textbf{plot\_grid\_search.ipynb}. Quy trình trích xuất đặc trưng sinh học theo từng phân vùng độc lập trên khuôn mặt được mô tả cụ thể trong Hình 2.1. Sự nhạy bén của không gian trọng số được khảo sát và biểu diễn trực quan qua Biểu đồ phân tích độ nhạy Hình 2.2. Từ đó, hiệu năng nhận dạng tương ứng của các cấu hình trọng số tiêu biểu được đối chiếu qua Biểu đồ cột Hình 2.3 và thống kê chi tiết trong Bảng 2.1:
+    \item \textbf{Theo dõi ẩn danh (Anonymous Session Tracking):} Toàn bộ quy trình phân tích biểu cảm và chuỗi hành trình được liên kết thông qua mã định danh cục bộ ẩn danh (\texttt{local\_track\_id}) và mã phiên (\texttt{session\_id}). Hệ thống hoàn toàn không bắt buộc phải có thông tin định danh cá nhân (\texttt{customer\_id}).
+    \item \textbf{Không lưu trữ hình ảnh gốc:} Sau khi trích xuất vector xác suất biểu cảm và điểm số chất lượng, khung hình thô bị xóa khỏi bộ nhớ đệm (RAM) và không lưu trữ vào CSDL trừ khi có sự đồng ý tường minh của khách hàng phục vụ chức năng đối soát.
 \end{enumerate}
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=\textwidth]{Figures/extracted_face_regions.png}
-\caption{Quy trình phân tách khuôn mặt thành ba phân vùng sinh học độc lập: Thượng (trán/mắt), Trung (mũi/gò má) và Hạ (cằm/hàm) sử dụng mặt nạ làm mờ}
-\label{fig:face_segmentation}
-\end{figure}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.85\textwidth]{Figures/grid_search_sensitivity.png}
-\caption{Biểu đồ đường phân tích độ nhạy của độ chính xác nhận dạng theo trọng số vùng Thượng ($w_{\text{upper}}$) ứng với các mức $w_{\text{mid}}$ cố định}
-\label{fig:grid_search_sensitivity}
-\end{figure}
-
-Biểu đồ đường trong Hình 2.2 thể hiện xu hướng biến thiên của độ chính xác nhận dạng khi thay đổi trọng số vùng Thượng ($w_{\text{upper}}$) trên trục hoành dưới các mốc giá trị cố định của trọng số vùng Trung ($w_{\text{mid}}$). Lý do lựa chọn trọng số vùng Thượng ($w_{\text{upper}}$) làm biến số độc lập đại diện trên trục hoành xuất phát từ cả ràng buộc toán học lẫn ý nghĩa sinh học:
-\begin{itemize}
-    \item \textbf{Về mặt toán học:} Do ràng buộc tổng các trọng số bằng $1.0$, không gian tìm kiếm 3 chiều thực chất chỉ còn 2 bậc tự do. Khi cố định trọng số vùng Trung $w_{\text{mid}}$ ở các mức cụ thể ($0.1, 0.2, 0.3, 0.4, 0.5$), việc quét biến số $w_{\text{upper}}$ trên trục hoành sẽ tự động xác định giá trị của biến còn lại là trọng số vùng Hạ ($w_{\text{lower}} = 1.0 - w_{\text{upper}} - w_{\text{mid}}$). Điều này giúp trực quan hóa không gian tham số 3 chiều phức tạp thành các đường cong 2D dễ quan sát.
-    \item \textbf{Về mặt sinh học:} Vùng Thượng (trán và mắt) là phân vùng cấu trúc xương cứng ổn định nhất, ít chịu ảnh hưởng nhất bởi các tác động của phẫu thuật thẩm mỹ (so với vùng Trung chịu sửa mũi hay vùng Hạ chịu gọt hàm). Việc đặt $w_{\text{upper}}$ làm trục hoành giúp kiểm chứng trực tiếp giả thuyết cốt lõi của nghiên cứu: hiệu năng nhận dạng sẽ có xu hướng cải thiện đồng biến khi tăng dần tỷ trọng đóng góp của phân vùng ổn định này.
-\end{itemize}
-Quan sát các đường thực nghiệm, ta thấy độ chính xác có xu hướng tăng dần khi trọng số vùng Thượng tăng từ $0.0$ lên và đạt đỉnh trong khoảng $0.4$ đến $0.5$, sau đó suy giảm dần. Điều này chứng minh rằng việc tăng tỷ trọng cho phân vùng Thượng bền vững là chính xác, nhưng nếu tăng quá mức (bỏ qua hoàn toàn hai vùng còn lại) sẽ làm mất đi các thông tin đối sánh hình học quan trọng khác. Vị trí ngôi sao đỏ đánh dấu cấu hình tối ưu toàn cục thu được tại tọa độ $(w_{\text{upper}} = 0.5; w_{\text{mid}} = 0.3; w_{\text{lower}} = 0.2)$ với độ chính xác đạt cực đại $92.22\%$.
-
-\begin{figure}[H]
-\centering
-\begin{tikzpicture}
-    % Trục tọa độ
-    \draw[->, thick] (0,0) -- (9.0,0) node[right, scale=0.85] {Cấu hình};
-    \draw[->, thick] (0,0) -- (0,5.5) node[above, scale=0.85] {Độ chính xác (\%)};
-    
-    % Đường lưới và nhãn trục Y
-    \foreach \y in {20, 40, 60, 80, 100} {
-        \draw[dashed, gray!40] (0,\y*0.05) -- (8.5,\y*0.05);
-        \node[left, scale=0.8] at (0,\y*0.05) {\y\%};
-    }
-    
-    % Vẽ cột dữ liệu
-    % Cột 1: Trọng số đồng đều -> 88.07% (cao = 4.40)
-    \draw[fill=blue!30, draw=blue!70] (0.5,0) rectangle (1.5, 4.40);
-    \node[above, scale=0.8] at (1.0, 4.40) {88.07\%};
-    \node[below, scale=0.7, align=center] at (1.0,-0.1) {Trọng số\\đồng đều};
-    
-    % Cột 2: Tập trung vùng Hạ -> 81.33% (cao = 4.07)
-    \draw[fill=red!30, draw=red!70] (2.7,0) rectangle (3.7, 4.07);
-    \node[above, scale=0.8] at (3.2, 4.07) {81.33\%};
-    \node[below, scale=0.7, align=center] at (3.2,-0.1) {Tập trung\\vùng Hạ};
-    
-    % Cột 3: Tập trung vùng Trung -> 85.89% (cao = 4.29)
-    \draw[fill=orange!30, draw=orange!70] (4.9,0) rectangle (5.9, 4.29);
-    \node[above, scale=0.8] at (5.4, 4.29) {85.89\%};
-    \node[below, scale=0.7, align=center] at (5.4,-0.1) {Tập trung\\vùng Trung};
-    
-    % Cột 4: Đề xuất tối ưu -> 92.22% (cao = 4.61)
-    \draw[fill=green!40, draw=green!70, thick] (7.1,0) rectangle (8.1, 4.61);
-    \node[above, scale=0.8, font=\bfseries] at (7.6, 4.61) {92.22\%};
-    \node[below, scale=0.7, align=center, font=\bfseries] at (7.6,-0.1) {Đề xuất\\tối ưu};
-\end{tikzpicture}
-\caption{Biểu đồ đối chiếu hiệu năng nhận dạng của các cấu hình trọng số trên tập dữ liệu C2FPW}
-\label{fig:grid_search_bar_chart}
-\end{figure}
-
-Hình 2.3 trực quan hóa dưới dạng biểu đồ cột nhằm so sánh trực quan hiệu năng của 4 cấu hình trọng số đặc trưng tiêu biểu được trích xuất từ quá trình tối ưu hóa. Cột màu xanh lá cây thể hiện cấu hình đề xuất đạt hiệu suất cao nhất ($92.22\%$), vượt trội rõ rệt so với cột màu xanh lam của cấu hình đồng đều ($88.07\%$). Ngược lại, cột màu đỏ biểu thị cấu hình tập trung vào vùng Hạ cho kết quả thấp nhất ($81.33\%$), nhấn mạnh sự nguy hiểm khi gán trọng số lớn cho các vùng chịu biến đổi hình học mạnh do phẫu thuật thẩm mỹ.
-
-\begin{table}[H]
-\centering
-\caption{Kết quả độ chính xác nhận dạng trung bình tương ứng với các cấu hình trọng số}
-\label{tab:grid_search_results}
-\begin{tabularx}{\textwidth}{|C{0.3}|C{1.1}|C{1.1}|C{1.1}|C{1.4}|}
-\hline
-\textbf{STT} & \textbf{Trọng số Thượng ($w_{\text{upper}}$)} & \textbf{Trọng số Trung ($w_{\text{mid}}$)} & \textbf{Trọng số Hạ ($w_{\text{lower}}$)} & \textbf{Độ chính xác (\%)} \\ \hline
-1 & 0.33 & 0.33 & 0.33 & 88.07\% \\ \hline
-2 & 0.20 & 0.30 & 0.50 & 81.33\% \\ \hline
-3 & 0.30 & 0.50 & 0.20 & 85.89\% \\ \hline
-\textbf{4} & \textbf{0.50} & \textbf{0.30} & \textbf{0.20} & \textbf{92.22\%} \\ \hline
-\end{tabularx}
-\end{table}
-
-\noindent \textbf{Phân tích kết quả thực nghiệm từ Bảng 2.1:}
-
-Dựa trên số liệu thực nghiệm thu được trong Bảng 2.1, hiệu năng nhận dạng của mô hình biến thiên rõ rệt tùy thuộc vào việc lựa chọn tổ hợp trọng số phân phối cho các phân vùng khuôn mặt:
-\begin{itemize}
-    \item \textbf{Cấu hình 1 (STT 1 - Trọng số đồng đều):} Khi áp dụng phân bổ trọng số cân bằng $w_i = 0.33$ cho cả ba vùng (đại diện cho cách tiếp cận nhận diện khuôn mặt truyền thống), độ chính xác nhận dạng đạt $88.07\%$. Kết quả này phản ánh rằng việc xử lý đồng nhất thông tin khuôn mặt sẽ dễ bị ảnh hưởng tiêu cực khi xuất hiện các biến dạng thẩm mỹ cục bộ.
-    
-    \item \textbf{Cấu hình 2 (STT 2 - Tập trung vùng Hạ):} Khi dồn trọng số chính về vùng Hạ ($w_{\text{lower}} = 0.5$), độ chính xác bị sụt giảm nghiêm trọng xuống mức thấp nhất là $81.33\%$. Điều này chứng minh thực tế rằng vùng cằm và xương hàm chịu biến dạng hình học lớn nhất dưới tác động của phẫu thuật thẩm mỹ, việc phụ thuộc nhiều vào vùng này sẽ trực tiếp gây ra sai số nhận diện lớn.
-    
-    \item \textbf{Cấu hình 3 (STT 3 - Tập trung vùng Trung):} Với việc tập trung trọng số lớn cho vùng Trung ($w_{\text{mid}} = 0.5$), độ chính xác đạt $85.89\%$. Kết quả này vẫn thấp hơn Cấu hình đồng đều, phản ánh tác động tiêu cực của các ca phẫu thuật chỉnh hình mũi lên tổng thể cấu trúc nhận dạng của vùng mặt giữa.
-    
-    \item \textbf{Cấu hình 4 (STT 4 - Đề xuất tối ưu):} Khi dồn trọng số lớn nhất cho vùng Thượng ($w_{\text{upper}} = 0.5$) và giảm thiểu tối đa vai trò của vùng Hạ ($w_{\text{lower}} = 0.2$), độ chính xác nhận dạng đạt đỉnh cực đại toàn cục là $92.22\%$. Kết quả này giúp cải thiện đáng kể $+4.15\%$ so với baseline đồng đều và vượt trội $+10.89\%$ so với Cấu hình 2, chứng minh độ tin cậy vượt trội khi tập trung vào các vùng xương cứng ổn định.
-\end{itemize}
-
-\noindent \textbf{Ý nghĩa sinh học và thực tiễn của bộ trọng số tối ưu:}
-
-Sau khi xác định được bộ trọng số tối ưu thực nghiệm là $(0.5; 0.3; 0.2)$, ý nghĩa sinh học và thực tiễn của các giá trị trọng số này được làm rõ như sau. Mỗi giá trị trọng số $w_i$ đại diện cho **Chỉ số bền vững sinh học (Biological Stability Index)** của phân vùng tương ứng trước các tác động của can thiệp phẫu thuật thẩm mỹ và thời gian:
-\begin{itemize}
-    \item \textbf{Trọng số vùng Thượng ($w_{\text{upper}} = 0.5$):} Thể hiện mức độ bền vững sinh học cao nhất. Vùng trán, cung mày và hốc mắt được bao bọc bởi cấu trúc xương sọ cứng vững, không chịu ảnh hưởng bởi các phẫu thuật thay đổi cấu trúc xương hàm hay mô mềm. Trọng số lớn nhất ($0.5$) đóng vai trò làm "neo định danh" giúp hệ thống giữ vững bộ khung nhận dạng cốt lõi của con người.
-    
-    \item \textbf{Trọng số vùng Trung ($w_{\text{mid}} = 0.3$):} Thể hiện mức độ bền vững trung bình. Vùng này chứa sống mũi và gò má. Phẫu thuật nâng mũi (Rhinoplasty) là một trong những dịch vụ thẩm mỹ phổ biến nhất, trực tiếp làm thay đổi giá trị khoảng cách vùng này. Tuy nhiên, cấu trúc xương gò má và khoảng cách hai bên má vẫn giữ được sự ổn định cao, do đó vùng này được phân phối trọng số vừa phải ($0.3$).
-    
-    \item \textbf{Trọng số vùng Hạ ($w_{\text{lower}} = 0.2$):} Thể hiện mức độ bền vững thấp nhất. Vùng cằm, hàm và viền môi là nơi chịu các ca đại phẫu làm thay đổi hoàn toàn hình học khuôn mặt (gọt hàm V-line, độn cằm, chỉnh khớp cắn). Vì thế, vùng này có nguy cơ biến đổi và sai lệch cao nhất. Việc hạ trọng số xuống mức tối thiểu ($0.2$) giúp giảm thiểu tối đa sự ảnh hưởng của những biến đổi thẩm mỹ nặng nề ở phần mặt dưới lên kết quả nhận diện chung của toàn bộ khuôn mặt.
-\end{itemize}
-
-Sự kết hợp tối ưu giữa thực nghiệm tìm kiếm lưới và cơ sở phân tích cấu trúc xương mặt đã khẳng định tính đúng đắn và hiệu quả khoa học của bộ trọng số đề xuất trong việc nâng cao độ bền vững của mô hình nhận dạng trước các biến dạng phẫu thuật thẩm mỹ.
-
-\subsubsection*{2.1.6. Lý thuyết lọc thông thấp Gaussian và kỹ thuật phân tách vùng ảnh}
-\addcontentsline{toc}{subsubsection}{\numberline{}2.1.6. Lý thuyết lọc thông thấp Gaussian và kỹ thuật phân tách vùng ảnh}
-
-Trong xử lý ảnh số, việc phân vùng ảnh mà không làm gián đoạn tính liên tục về mặt tần số không gian là một thách thức lớn. Nếu sử dụng phương pháp cắt vùng cứng (Hard Crop) hoặc che tối hoàn toàn bằng mặt nạ nhị phân (Binary Masking), hệ thống sẽ tạo ra các đường biên cắt sắc nét. Theo lý thuyết biến đổi Fourier \cite{gonzalez2018digital}, một đường biên sắc nét có bước nhảy biên độ đột ngột tương đương với các thành phần tần số cao (high-frequency components) cực lớn trong miền tần số.
-
-Khi các ảnh chứa đường biên cắt này đi qua các lớp đầu tiên của mạng tích chập CNN (Edge detectors - bộ phát hiện cạnh dựa trên đạo hàm không gian), chúng sẽ kích hoạt các giá trị cực đoan (outliers) trong bản đồ đặc trưng (feature maps). Mạng CNN sẽ nhận diện nhầm các đường cắt nhân tạo này là các đặc trưng hình học mạnh của khuôn mặt, dẫn đến việc làm sai lệch nghiêm trọng vector đặc trưng đầu ra.
-
-Để giải quyết vấn đề này, lý thuyết lọc thông thấp Gaussian (Gaussian Low-pass Filtering) được áp dụng. Hàm lọc Gaussian 2D có dạng:
-$$G(x, y) = \frac{1}{2\pi\sigma^2} e^{-\frac{x^2 + y^2}{2\sigma^2}}$$
-Phép nhân chập ảnh với nhân Gaussian với kích thước hạt $\sigma$ lớn đóng vai trò là một bộ lọc thông thấp, loại bỏ các chi tiết tần số cao (nếp nhăn, cạnh góc sắc nét) và chỉ giữ lại các thành phần tần số thấp (tông màu tổng thể).
-
-\noindent \textbf{Lý do lý thuyết này cần thiết cho luận văn:}
-Trong bài toán nhận dạng khuôn mặt dưới ảnh hưởng của phẫu thuật thẩm mỹ, hệ thống đề xuất của em thực hiện chia khuôn mặt thành 3 vùng độc lập (Thượng, Trung, Hạ). Nếu thực hiện cắt cứng hoặc che đen các vùng không quan tâm, sự xuất hiện của các đường biên cắt sắc cạnh nhân tạo sẽ ngay lập tức kích hoạt các neuron phát hiện cạnh ở các lớp nông của mạng CNN, làm sai lệch nghiêm trọng vector đặc trưng. Việc áp dụng lý thuyết lọc thông thấp Gaussian làm mịn biên giúp làm mờ mượt mà các vùng không quan tâm, triệt thu nhiễu biên tần số cao và giảm entropy thông tin tại biên về tiệm cận 0. Điều này dẫn dắt cơ chế tập trung (attention) của mạng CNN chỉ tập trung trích xuất thông tin đặc trưng hữu ích từ vùng sắc nét mà không phá vỡ cấu trúc đầu vào $224 \times 224$ của mô hình, đảm bảo tính ổn định tối đa cho vector biểu diễn.
-
-\subsubsection*{2.1.7. Lý thuyết ánh xạ không gian đặc trưng và chuẩn hóa L2}
-\addcontentsline{toc}{subsubsection}{\numberline{}2.1.7. Lý thuyết ánh xạ không gian đặc trưng và chuẩn hóa L2}
-
-Khi sử dụng một mô hình mạng nơ-ron nền tảng đã đóng băng (frozen backbone), các vector đặc trưng thô $\bm{x} \in \mathbb{R}^{d}$ được huấn luyện trên phân phối người bình thường sẽ không tối ưu cho miền dữ liệu có biến đổi phẫu thuật thẩm mỹ. Để giải quyết, lý thuyết ánh xạ không gian (Representation Space Alignment) đề xuất sử dụng một lớp chiếu tuyến tính (Linear Projection Head) nhằm thực hiện phép biến đổi tuyến tính hệ tọa độ đặc trưng:
-$$\bm{z} = \bm{x} \bm{W} + \bm{b}$$
-Trong đó, ma trận trọng số $\bm{W} \in \mathbb{R}^{d \times d}$ thực hiện các phép biến đổi hình học như xoay (rotation) và co giãn (scaling) các chiều không gian đặc trưng, còn vector bias $\bm{b} \in \mathbb{R}^{d}$ thực hiện phép tịnh tiến (translation) gốc tọa độ để tối ưu hóa việc phân tách các lớp dữ liệu.
-
-Sau phép chiếu tuyến tính, vector đặc trưng được đưa qua phép chuẩn hóa L2 (L2 Normalization) để chiếu điểm dữ liệu lên mặt cầu đơn vị đa chiều $\mathcal{S}^{d-1}$ (Unit Hypersphere):
-$$\bm{y} = \frac{\bm{z}}{\|\bm{z}\|_2}$$
-Trong đó $\|\bm{z}\|_2 = \sqrt{\sum_{k=1}^{d} z_k^2}$. Trên mặt cầu đơn vị, bình phương khoảng cách Euclidean giữa hai vector $\bm{y}_1$ và $\bm{y}_2$ tỷ lệ thuận trực tiếp với khoảng cách Cosine:
-$$\|\bm{y}_1 - \bm{y}_2\|_2^2 = \|\bm{y}_1\|_2^2 + \|\bm{y}_2\|_2^2 - 2(\bm{y}_1 \cdot \bm{y}_2)$$
-Vì $\|\bm{y}_1\|_2 = \|\bm{y}_2\|_2 = 1.0$, hệ thức đơn giản hóa thành:
-$$\|\bm{y}_1 - \bm{y}_2\|_2^2 = 2(1 - \cos(\bm{y}_1, \bm{y}_2)) = 2 \cdot D_{\text{Cosine}}(\bm{y}_1, \bm{y}_2)$$
-
-\noindent \textbf{Lý do lý thuyết này cần thiết cho luận văn:}
-\begin{enumerate}
-    \item \textit{Căn chỉnh hệ tọa độ đặc trưng riêng cho miền dữ liệu PTTM:} Vector đặc trưng thô của mô hình Facenet512 không tự động thích ứng được với sự thay đổi diện mạo do phẫu thuật thẩm mỹ. Do tập dữ liệu PTTM có quy mô rất nhỏ, việc huấn luyện lại toàn bộ Facenet512 là bất khả thi vì sẽ gây ra hiện tượng quá khớp (overfitting) hoặc quên lãng thảm họa (catastrophic forgetting). Lớp chiếu tuyến tính phụ đóng vai trò như một bộ biến đổi hệ tọa độ, xoay và dịch chuyển không gian đặc trưng cũ để đưa các vector trước và sau phẫu thuật của cùng một người về gần nhau hơn mà không làm mất đi tri thức tổng quát đã học của mô hình gốc.
-    \item \textit{Chuẩn hóa triệt tiêu nhiễu phi nhân tính:} Phép chuẩn hóa L2 giúp triệt tiêu hoàn toàn sự ảnh hưởng của độ dài vector đặc trưng (vốn nhạy cảm với điều kiện ánh sáng, độ tương phản của camera giám sát), chỉ giữ lại hướng của vector biểu diễn danh tính.
-    \item \textit{Tính nhất quán toán học:} Sự tương đương toán học giữa khoảng cách Euclidean bình phương và khoảng cách Cosine trên mặt cầu đơn vị cho phép hệ thống huấn luyện mượt mà bằng Triplet Loss (dựa trên khoảng cách Euclidean) nhưng đối sánh song song hiệu năng cao bằng khoảng cách Cosine trực tiếp ở mức CSDL bằng \texttt{pgvector}.
-\end{enumerate}
-
-\subsubsection*{2.1.8. Lý thuyết tối ưu hóa metric bằng hàm mất mát Triplet Loss}
-\addcontentsline{toc}{subsubsection}{\numberline{}2.1.8. Lý thuyết tối ưu hóa metric bằng hàm mất mát Triplet Loss}
-
-Hàm mất mát bộ ba (Triplet Loss) do Schroff và các cộng sự giới thiệu trong mô hình FaceNet \cite{schroff2015facenet} là nền tảng của học khoảng cách đặc trưng (Deep Metric Learning). Khác với các hàm lỗi phân lớp truyền thống (Softmax Cross-Entropy) yêu cầu số lượng lớp phân biệt cố định, Triplet Loss tối ưu trực tiếp cấu trúc hình học của không gian vector đặc trưng để áp dụng cho các hệ thống mở (Open-set).
-
-Mục tiêu của Triplet Loss là ràng buộc không gian sao cho khoảng cách giữa mẫu neo (Anchor - $A$) and mẫu tích cực (Positive - $P$, cùng chủ thể) nhỏ hơn khoảng cách giữa mẫu neo và mẫu tiêu cực (Negative - $N$, khác chủ thể) tối thiểu là một khoảng bằng biên an toàn $\alpha$ (margin):
-$$\|f(A_i) - f(P_i)\|_2^2 + \alpha < \|f(A_i) - f(N_i)\|_2^2$$
-Để tối ưu hóa bằng phương pháp lan truyền ngược, ràng buộc này được biểu diễn dưới dạng hàm lỗi Hinge Loss qua phép toán $\max(\cdot, 0)$:
-$$\mathcal{L} = \sum_{i=1}^{M} \max \left( \|f(A_i) - f(P_i)\|_2^2 - \|f(A_i) - f(N_i)\|_2^2 + \alpha, 0 \right)$$
-Hằng số biên an toàn $\alpha > 0$ đóng vai trò quyết định ngăn chặn hiện tượng sụp đổ đặc trưng (representation collapse), tức là tình trạng mô hình chiếu tất cả các ảnh về một vector hằng số duy nhất để triệt tiêu loss mà không học được bất kỳ thông tin nhận diện nào.
-
-\noindent \textbf{Lý do lý thuyết này cần thiết cho luận văn:}
-Hệ thống CRM nhận dạng và check-in khách hàng thực tế là một bài toán hệ thống mở (Open-set recognition). Danh sách khách hàng trong cơ sở dữ liệu thay đổi liên tục hàng ngày (đăng ký mới hoặc xóa bỏ), do đó em không thể sử dụng hàm lỗi phân lớp Softmax truyền thống (vốn yêu cầu số lượng lớp cố định). Lý thuyết tối ưu hóa metric bằng Triplet Loss cho phép lớp chiếu thích ứng học cách sắp xếp lại không gian vector sao cho nó có khả năng phân biệt chung cho bất kỳ cá nhân mới nào mà không cần huấn luyện lại toàn bộ mô hình khi cơ sở dữ liệu thay đổi.
-
-\subsection*{2.2. Lý thuyết về hệ thống CRM và quản lý thông tin khách hàng}
-\addcontentsline{toc}{subsection}{\numberline{}2.2. Lý thuyết về hệ thống CRM và quản lý thông tin khách hàng}
-
-Trong kỷ nguyên số, hệ thống Quản trị Quan hệ Khách hàng (CRM) đóng vai trò cốt lõi trong việc quản lý tập trung thông tin, nhật ký tương tác và nâng cao chất lượng phục vụ khách hàng. Khi tích hợp công nghệ sinh trắc học nhận dạng khuôn mặt và xác định cảm xúc thời gian thực, hệ thống CRM cho phép tự động ghi nhận nhật ký ghé thăm, cập nhật và đồng bộ hồ sơ khách hàng ngay khi họ xuất hiện tại các điểm chạm thực tế. Việc lưu trữ các thông tin định danh và trạng thái cảm xúc tự nhiên này giúp nhân viên đón tiếp nhanh chóng nắm bắt lịch sử tương tác của từng cá nhân, từ đó tối ưu hóa quy trình tiếp đón và cải thiện đáng kể sự hài lòng trực tiếp của khách hàng tại điểm chạm.
-
+\newpage

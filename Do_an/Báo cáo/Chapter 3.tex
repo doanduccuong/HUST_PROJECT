@@ -1,106 +1,221 @@
-\section*{CHƯƠNG 3. PHƯƠNG PHÁP ĐỀ XUẤT}
-\addcontentsline{toc}{section}{\numberline{}CHƯƠNG 3. PHƯƠNG PHÁP ĐỀ XUẤT}
+\section*{CHƯƠNG 3. PHƯƠNG PHÁP ĐỀ XUẤT VÀ THIẾT KẾ HỆ THỐNG}
+\addcontentsline{toc}{section}{\numberline{}CHƯƠNG 3. PHƯƠNG PHÁP ĐỀ XUẤT VÀ THIẾT KẾ HỆ THỐNG}
 \setcounter{section}{3}
 \setcounter{subsection}{0}
 \setcounter{figure}{0}
 \setcounter{table}{0}
 
-\subsection*{3.1. Quy trình tổng quát của phương pháp nghiên cứu đề xuất}
-\addcontentsline{toc}{subsection}{\numberline{}3.1. Quy trình tổng quát của phương pháp nghiên cứu đề xuất}
+\subsection*{3.1. Kiến trúc tổng thể hệ thống (System Architecture)}
+\addcontentsline{toc}{subsection}{\numberline{}3.1. Kiến trúc tổng thể hệ thống (System Architecture)}
 
-Để giải quyết bài toán nhận dạng danh tính khách hàng bị biến đổi diện mạo do phẫu thuật thẩm mỹ (PTTM) hoặc lão hóa, nghiên cứu này đề xuất quy trình trích xuất đặc trưng phân vùng thích ứng, kết hợp ánh xạ không gian metric qua lớp chiếu tuyến tính được huấn luyện bằng hàm mất mát Triplet Loss. 
+Hệ thống phân tích trải nghiệm và hành vi khách hàng được xây dựng theo kiến trúc Microservices hiện đại, phân tách rõ ràng giữa phân hệ xử lý trí tuệ nhân tạo (AI Inference), máy chủ điều phối nghiệp vụ phân tích kinh doanh (CRM Backend), cơ sở dữ liệu quan hệ kết hợp lưu trữ sự kiện cảm xúc (PostgreSQL), và giao diện bảng điều khiển trực quan (Next.js Dashboard).
 
-Quy trình nghiên cứu tổng quát được chia làm hai giai đoạn chính:
+Sơ đồ kiến trúc tổng thể và luồng truyền dữ liệu giữa các dịch vụ được mô tả trong Hình 3.1:
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[node distance=1.5cm, auto,
+    block/.style={rectangle, draw=blue!70, fill=blue!10, thick, rounded corners, text width=3.8cm, align=center, minimum height=1.3cm, font=\small},
+    service/.style={rectangle, draw=green!70, fill=green!10, thick, rounded corners, text width=3.8cm, align=center, minimum height=1.3cm, font=\small},
+    db/.style={cylinder, draw=orange!70, fill=orange!10, shape border rotate=90, aspect=0.25, thick, text width=3.2cm, align=center, minimum height=1.3cm, font=\small},
+    ui/.style={rectangle, draw=purple!70, fill=purple!10, thick, rounded corners, text width=3.8cm, align=center, minimum height=1.3cm, font=\small},
+    line/.style={draw, -latex, thick}
+]
+    % Nodes
+    \node [block] (input) {\textbf{Nguồn dữ liệu vào}\\(Camera / Video Replay / Tải ảnh)};
+    \node [service, right=1.8cm of input] (ai) {\textbf{FastAPI AI Service}\\(Cổng 8000)\\- Phát hiện mặt \& Căn chỉnh\\- Lọc chất lượng ảnh\\- Phân loại 7 lớp FER};
+    \node [service, below=1.8cm of ai] (backend) {\textbf{Spring Boot CRM API}\\(Cổng 8081)\\- Quản lý phiên \& Local Track\\- Làm mịn EMA chuỗi thời gian\\- Phân tích tương quan CX};
+    \node [db, left=1.8cm of backend] (db) {\textbf{PostgreSQL}\\(Cổng 5433)\\- Sessions \& Events JSONB\\- Summary \& CRM Orders};
+    \node [ui, below=1.8cm of backend] (frontend) {\textbf{Next.js Dashboard}\\(Cổng 3000)\\- Phân bố 7 lớp biểu cảm\\- Xu hướng theo thời gian\\- Biểu đồ Zone \& Chuyển dịch};
+
+    % Connections
+    \path [line] (input) -- node[above, font=\footnotesize] {Frame ảnh} (ai);
+    \path [line] (ai) -- node[right, font=\footnotesize] {Vector 7 lớp \& Latency} (backend);
+    \path [line] (backend) -- node[above, font=\footnotesize] {Ghi nhận sự kiện} (db);
+    \path [line] (db) -- node[below, font=\footnotesize] {Truy vấn BI} (backend);
+    \path [line] (backend) -- node[right, font=\footnotesize] {REST API / JWT} (frontend);
+    \path [line] (input) |- node[near start, left, font=\footnotesize] {Khởi tạo phiên} (backend);
+\end{tikzpicture}
+\caption{Sơ đồ kiến trúc tổng thể hệ thống phân tích trải nghiệm khách hàng đa dịch vụ}
+\label{fig:system_architecture}
+\end{figure}
+
+\noindent \textbf{Phân công trách nhiệm giữa các thành phần:}
 \begin{enumerate}
-    \item \textbf{Giai đoạn huấn luyện offline (Offline Training):} 
-    Sử dụng tập dữ liệu ảnh khuôn mặt PTTM để thực hiện phân tách vùng $\rightarrow$ Trích xuất đặc trưng thô từ mô hình nền tảng Facenet512 $\rightarrow$ Huấn luyện lớp chiếu mạng nơ-ron bằng Triplet Loss để tối ưu hóa ma trận trọng số $\bm{W}$ và bias $\bm{b}$ cho từng vùng ảnh độc lập.
-    \item \textbf{Giai đoạn đối sánh online (Online Matching):} 
-    Ảnh đầu vào từ thiết bị được phân vùng và chiếu qua ma trận trọng số đã học để thu được các vector đặc trưng thích ứng $\rightarrow$ Thực hiện thuật toán đối sánh dung hợp trọng số sinh học để đưa ra quyết định nhận dạng danh tính cuối cùng.
+    \item \textbf{FastAPI AI Emotion Service (Cổng 8000):} Đóng vai trò là dịch vụ tính toán thị giác máy tính thuần túy. Dịch vụ nhận ảnh đầu vào từ các điểm chạm, phát hiện khuôn mặt, lọc bỏ ảnh không đạt chuẩn, tính toán vector xác suất trên 7 lớp biểu cảm và trả về kết quả cùng thời gian thực thi (latency). Dịch vụ hoạt động hoàn toàn độc lập, không trực tiếp ghi dữ liệu vào CSDL.
+    \item \textbf{Spring Boot CRM API (Cổng 8081):} Trung tâm xử lý nghiệp vụ và điều phối dữ liệu. Thực hiện nạp sự kiện (Data Ingestion), quản lý phiên tương tác theo \texttt{local\_track\_id}, thực hiện thuật toán làm mịn EMA chống nhấp nháy, suy luận trạng thái trải nghiệm bán lẻ, tính toán các chỉ số kinh doanh thông minh và phân quyền bảo mật qua JWT.
+    \item \textbf{PostgreSQL (Cổng 5433):} Lưu trữ toàn bộ dữ liệu quan hệ của hệ thống CRM, hồ sơ đơn hàng, nhật ký tương tác, bảng phiên trải nghiệm (\texttt{experience\_sessions}) và bảng sự kiện cảm xúc chi tiết (\texttt{experience\_state\_events}) với trường xác suất được lưu dạng \texttt{JSONB}.
+    \item \textbf{Next.js Dashboard (Cổng 3000):} Ứng dụng web hiển thị trực quan các phân tích trải nghiệm khách hàng đa chiều theo kiến trúc Clean Architecture, hỗ trợ người quản lý theo dõi thời gian thực sự hài lòng của khách hàng và hiệu quả phục vụ của nhân viên.
 \end{enumerate}
+
+\subsection*{3.2. Thiết kế Pipeline nhận dạng biểu cảm 7 lớp tại FastAPI}
+\addcontentsline{toc}{subsection}{\numberline{}3.2. Thiết kế Pipeline nhận dạng biểu cảm 7 lớp tại FastAPI}
+
+Dịch vụ AI cung cấp endpoint RESTful chuyên biệt tiếp nhận khung hình ảnh:
+\begin{center}
+\texttt{POST /internal/v1/emotions/analyze}
+\end{center}
+Pipeline xử lý bên trong dịch vụ thực hiện tuần tự qua 4 giai đoạn nghiêm ngặt:
+
+\begin{enumerate}
+    \item \textbf{Giai đoạn 1 — Giải mã và Phát hiện khuôn mặt:} Khung hình dạng byte nhị phân được giải mã thành ma trận ảnh màu BGR qua thư viện OpenCV. Thuật toán phát hiện khuôn mặt thực hiện quét và trích xuất hộp giới hạn (Bounding Box). Nếu phát hiện 0 khuôn mặt hoặc nhiều hơn 1 khuôn mặt, hệ thống trả về mã lỗi tương ứng (\textit{NO\_FACE\_DETECTED, MULTIPLE\_FACES\_DETECTED}).
+    
+    \item \textbf{Giai đoạn 2 — Đánh giá và sàng lọc chất lượng ảnh:}
+    Khuôn mặt đã phát hiện được đưa qua bộ kiểm tra chất lượng (như đã thiết lập tại Mục 2.1.3):
+    \begin{itemize}
+        \item Tính toán phương sai toán tử Laplace $\text{Var}_{\text{Lap}}$ để đo độ mờ chuyển động.
+        \item Tính toán cường độ sáng trung bình $\mu_{\text{gray}}$ để phát hiện ảnh quá tối ($\mu < 45$) hoặc quá sáng ($\mu > 215$).
+        \item Tính toán điểm số chất lượng tổng hợp $Q$. Nếu $Q < 0.45$ hoặc độ tin cậy phát hiện $C_{\text{face}} < 0.70$, cờ \texttt{accepted = false} được thiết lập và ghi nhận danh sách lý do từ chối.
+    \end{itemize}
+    
+    \item \textbf{Giai đoạn 3 — Suy luận biểu cảm 7 lớp (FER Inference):}
+    Khuôn mặt đạt chuẩn được căn chỉnh và chuẩn hóa kích thước $224 \times 224$ pixels. Mạng nơ-ron tích chập sâu thực hiện trích xuất đặc trưng và tính toán phân bố xác suất Softmax chuẩn hóa trên 7 lớp biểu cảm theo đúng thứ tự cố định:
+    \begin{equation}
+    \bm{P} = [p_{\text{angry}}, p_{\text{disgust}}, p_{\text{fear}}, p_{\text{happy}}, p_{\text{sad}}, p_{\text{surprise}}, p_{\text{neutral}}]^T
+    \end{equation}
+    
+    \item \textbf{Giai đoạn 4 — Đóng gói phản hồi chuẩn hóa:}
+    Dữ liệu đầu ra được đóng gói theo cấu trúc JSON chuẩn hóa gồm: mã theo vết (\texttt{traceId}), phiên bản mô hình (\texttt{modelVersion}), thời gian xử lý (\texttt{inferenceMs}), điểm chất lượng ảnh và phân bố xác suất đầy đủ của 7 lớp biểu cảm.
+\end{enumerate}
+
+\subsection*{3.3. Thiết kế Phân hệ Quản lý Phiên và Xử lý Chuỗi thời gian tại Spring Boot}
+\addcontentsline{toc}{subsection}{\numberline{}3.3. Thiết kế Phân hệ Quản lý Phiên và Xử lý Chuỗi thời gian tại Spring Boot}
+
+Phân hệ Backend Java Spring Boot đóng vai trò làm cầu nối chuyển đổi các kết quả dự đoán rời rạc từ từng khung hình thành các chuỗi hành vi có ý nghĩa kinh doanh liên tục.
+
+\subsubsection*{3.3.1. Quản lý vòng đời phiên trải nghiệm (Session Lifecycle)}
+\addcontentsline{toc}{subsubsection}{\numberline{}3.3.1. Quản lý vòng đời phiên trải nghiệm (Session Lifecycle)}
+
+Khi một khách hàng bước vào tầm nhìn của camera tại một khu vực cụ thể (Zone), hệ thống khởi tạo một phiên trải nghiệm (\texttt{experience\_session}) với mã định danh \texttt{id} (UUID) và \texttt{local\_track\_id}. Các khung hình tiếp theo của khách hàng này trong cùng khu vực được gửi liên tục qua endpoint:
+\begin{center}
+\texttt{POST /api/v1/experience/sessions/\{id\}/analyze-frame}
+\end{center}
+Khi khách hàng rời khỏi khu vực, phiên được đóng lại (\texttt{close}) và hệ thống tự động tổng hợp toàn bộ các chỉ số thống kê của phiên đó.
+
+\subsubsection*{3.3.2. Thuật toán làm mịn EMA chống nhấp nháy}
+\addcontentsline{toc}{subsubsection}{\numberline{}3.3.2. Thuật toán làm mịn EMA chống nhấp nháy}
+
+Để triệt tiêu hiện tượng nhấp nháy dự đoán giữa các khung hình liên tiếp, dịch vụ \texttt{TemporalAggregationService} thực hiện cập nhật đệ quy vector xác suất làm mịn $\bm{s}_t$ theo công thức EMA với hệ số $\alpha = 0.35$. Nhờ đó, các thay đổi tức thời do chớp mắt hoặc cử động môi khi nói không làm sai lệch biểu cảm chủ đạo của khách hàng trong phiên.
+
+\subsubsection*{3.3.3. Phân loại trạng thái trải nghiệm đa tín hiệu (\texttt{ExperienceStateClassifier})}
+\addcontentsline{toc}{subsubsection}{\numberline{}3.3.3. Phân loại trạng thái trải nghiệm đa tín hiệu (\texttt{ExperienceStateClassifier})}
+
+Dựa trên vector xác suất sau làm mịn và thời gian dừng chân, bộ phân loại trải nghiệm áp dụng các quy tắc suy luận nghiệp vụ chuẩn hóa:
+\begin{equation}
+\text{ExperienceState} = 
+\begin{cases}
+\text{\texttt{DISSATISFIED}}, & \text{nếu } \max(p_{\text{angry}}, p_{\text{disgust}}, p_{\text{sad}}) \ge 0.45 \\
+\text{\texttt{DELIGHTED}}, & \text{nếu } p_{\text{happy}} \ge 0.55 \\
+\text{\texttt{CONFUSED}}, & \text{nếu } \max(p_{\text{fear}}, p_{\text{surprise}}) \ge 0.40 \\
+\text{\texttt{NEUTRAL}}, & \text{trong các trường hợp còn lại}
+\end{cases}
+\end{equation}
+Trạng thái \texttt{ENGAGED} (Hứng thú) và \texttt{IMPATIENT} (Sốt ruột) được suy luận bổ sung dựa trên thời gian lưu lại tại khu vực: nếu thời gian tại quầy chờ vượt quá 3 phút và biểu cảm chuyển dịch theo chiều hướng căng thẳng, hệ thống tự động kích hoạt trạng thái \texttt{IMPATIENT} để cảnh báo nhân viên.
+
+\subsection*{3.4. Mô hình Hành trình khách hàng đa điểm chạm (Customer Journey Mapping)}
+\addcontentsline{toc}{subsection}{\numberline{}3.4. Mô hình Hành trình khách hàng đa điểm chạm (Customer Journey Mapping)}
+
+Hệ thống liên kết các phiên trải nghiệm độc lập tại từng khu vực của cùng một khách hàng trong ngày thành một hành trình hoàn chỉnh (\texttt{Customer Journey}). Hành trình được phân bổ qua 6 khu vực chức năng tiêu chuẩn:
+\begin{table}[H]
+\centering
+\caption{Đặc tả 6 khu vực điểm chạm trong mô hình hành trình khách hàng}
+\label{tab:store_zones}
+\begin{tabularx}{\textwidth}{|C{0.3}|C{0.9}|C{1.3}|C{1.5}|}
+\hline
+\textbf{STT} & \textbf{Khu vực (Zone)} & \textbf{Mục tiêu nghiệp vụ} & \textbf{Ý nghĩa chỉ số cảm xúc} \\ \hline
+1 & \texttt{ENTRY} (Cổng vào) & Đón tiếp ban đầu & Ghi nhận trạng thái tâm lý ban đầu của khách khi vừa đến \\ \hline
+2 & \texttt{WAITING} (Khu vực chờ) & Tiếp đón & Đo lường sự thoải mái; phát hiện sớm sự sốt ruột (Impatient) \\ \hline
+3 & \texttt{CONSULTING} (Quầy tư vấn) & Giới thiệu dịch vụ & Đánh giá năng lực thuyết phục của nhân viên tư vấn \\ \hline
+4 & \texttt{PRODUCT} (Khu sản phẩm) & Trải nghiệm mẫu & Đo lường mức độ hứng thú (Engaged) và phân vân (Confused) \\ \hline
+5 & \texttt{CHECKOUT} (Quầy thanh toán) & Hoàn tất giao dịch & Đánh giá sự hài lòng về tốc độ thanh toán và thái độ thu ngân \\ \hline
+6 & \texttt{EXIT} (Cổng ra) & Chào tạm biệt & Đo lường cảm xúc tổng kết chuyến đi (End-of-visit CSAT) \\ \hline
+\end{tabularx}
+\end{table}
+
+\subsection*{3.5. Thiết kế Cơ sở dữ liệu quan hệ (PostgreSQL Schema)}
+\addcontentsline{toc}{subsection}{\numberline{}3.5. Thiết kế Cơ sở dữ liệu quan hệ (PostgreSQL Schema)}
+
+Cơ sở dữ liệu được thiết kế tối ưu hóa cho việc ghi nhận chuỗi sự kiện thời gian thực và truy vấn phân tích thống kê tổng hợp:
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[node distance=1.2cm, auto,
+    table/.style={rectangle, draw=black!80, fill=gray!10, rounded corners=2pt, font=\footnotesize, align=left, inner sep=6pt}
+]
+    \node [table] (sessions) {
+        \textbf{experience\_sessions} \\
+        \rule{3.8cm}{0.4pt} \\
+        \textbf{id}: UUID (PK) \\
+        customer\_id: INT (FK, Nullable) \\
+        camera\_id: VARCHAR(50) \\
+        zone: VARCHAR(50) \\
+        local\_track\_id: VARCHAR(100) \\
+        started\_at: TIMESTAMPTZ \\
+        ended\_at: TIMESTAMPTZ \\
+        data\_origin: VARCHAR(20)
+    };
+
+    \node [table, right=1.5cm of sessions] (events) {
+        \textbf{experience\_state\_events} \\
+        \rule{4.5cm}{0.4pt} \\
+        \textbf{id}: BIGSERIAL (PK) \\
+        session\_id: UUID (FK) \\
+        observed\_at: TIMESTAMPTZ \\
+        raw\_expression: VARCHAR(30) \\
+        raw\_expression\_confidence: DOUBLE \\
+        experience\_state: VARCHAR(30) \\
+        expression\_probabilities: JSONB \\
+        quality\_score: DOUBLE \\
+        quality\_accepted: BOOLEAN \\
+        inference\_ms: INT
+    };
+
+    \node [table, below=1.2cm of sessions] (summary) {
+        \textbf{purchase\_experience\_summary} \\
+        \rule{4.8cm}{0.4pt} \\
+        \textbf{order\_id}: INT (PK, FK) \\
+        customer\_id: INT (FK) \\
+        pre\_purchase\_score: DOUBLE \\
+        post\_purchase\_score: DOUBLE \\
+        experience\_delta: DOUBLE \\
+        confidence: DOUBLE
+    };
+
+    \node [table, right=1.5cm of summary] (orders) {
+        \textbf{so\_sales\_order} \\
+        \rule{3.8cm}{0.4pt} \\
+        \textbf{so\_id}: SERIAL (PK) \\
+        so\_code: VARCHAR(255) \\
+        staff\_id: INT (FK) \\
+        amount: DOUBLE PRECISION \\
+        status: VARCHAR(30) \\
+        paid\_at: TIMESTAMPTZ
+    };
+
+    \draw[->, thick] (events.west) -- node[above, font=\tiny] {N:1} (sessions.east);
+    \draw[->, thick] (summary.east) -- node[above, font=\tiny] {1:1} (orders.west);
+    \draw[->, thick] (summary.north) -- node[left, font=\tiny] {N:1} (sessions.south);
+\end{tikzpicture}
+\caption{Lược đồ quan hệ thực thể giữa các bảng quản lý phiên trải nghiệm và đơn hàng}
+\label{fig:db_schema}
+\end{figure}
+
+\noindent \textbf{Các trường dữ liệu then chốt:}
+\begin{itemize}
+    \item \textbf{\texttt{expression\_probabilities} (\texttt{JSONB}):} Lưu trữ toàn bộ 7 giá trị xác suất biểu cảm của khung hình, cho phép thực hiện các phép toán lọc và tổng hợp linh hoạt bằng ngôn ngữ SQL trực tiếp trong PostgreSQL mà không làm suy giảm hiệu năng.
+    \item \textbf{\texttt{data\_origin} (\texttt{VARCHAR}):} Phân loại rõ ràng nguồn gốc của dữ liệu (\texttt{REAL\_CAMERA}, \texttt{VIDEO\_REPLAY}, \texttt{IMAGE\_UPLOAD}, \texttt{SYNTHETIC\_DEMO}). Bảng điều khiển phân tích luôn loại bỏ dữ liệu demo nhân tạo khỏi các báo cáo thực tế.
+\end{itemize}
+
+\subsection*{3.6. Thiết kế Bảng điều khiển trực quan Dashboard (Next.js Clean Architecture)}
+\addcontentsline{toc}{subsection}{\numberline{}3.6. Thiết kế Bảng điều khiển trực quan Dashboard (Next.js Clean Architecture)}
+
+Phân hệ giao diện Next.js được tổ chức nghiêm ngặt theo mô hình **Clean Architecture**:
+\begin{itemize}
+    \item \textbf{Domain Layer (\texttt{src/domain/}):} Chứa các thực thể mô hình nghiệp vụ (Models), giao diện Repositories và các Use Cases nghiệp vụ thuần túy (\texttt{GetEmotionAnalyticsUseCase}, \texttt{GetCustomerJourneysUseCase}).
+    \item \textbf{Data Layer (\texttt{src/data/}):} Hiện thực hóa việc kết nối API bằng Axios (\texttt{ApiClient}), định nghĩa Data Transfer Objects (DTOs) với thư viện Zod để kiểm tra tính hợp lệ của dữ liệu, và các Mappers chuyển đổi an toàn sang Domain Entities.
+    \item \textbf{Presentation Layer (\texttt{src/viewmodels/}, \texttt{src/components/}):} Các React Custom Hooks (\texttt{useCrmViewModel}, \texttt{useEmotionAnalyticsViewModel}) quản lý trạng thái giao diện. Các Components chỉ liên kết với ViewModels và hoàn toàn không gọi trực tiếp API.
+\end{itemize}
+
+Bảng điều khiển cung cấp hệ thống báo cáo trực quan gồm 6 khối chức năng: Thẻ chỉ số tổng hợp (KPI Cards), Biểu đồ phân bố 7 lớp biểu cảm (Expression Distribution), Đồ thị xu hướng theo thời gian (Emotion Timeline), Bản đồ nhiệt cảm xúc theo khu vực (Zone Analytics), Biểu đồ chuyển dịch cảm xúc (Transition Chart) và Bảng xếp hạng hiệu suất tư vấn nhân viên (Sales Performance).
 
 \newpage
-\subsection*{3.2. Phương pháp tiền xử lý và phân tách vùng ảnh khuôn mặt}
-\addcontentsline{toc}{subsection}{\numberline{}3.2. Phương pháp tiền xử lý và phân tách vùng ảnh khuôn mặt}
-
-Để cô lập các biến dạng cơ học do phẫu thuật thẩm mỹ gây ra trên khuôn mặt (đã được tổng quan tại Mục 2.1.4), quy trình thực hiện phân tách khuôn mặt đã căn chỉnh chính diện về kích thước chuẩn $224 \times 224$ pixels thành ba phân vùng sinh học độc lập theo chiều dọc. Các tọa độ phân vùng hình học được em đề xuất và thiết lập như sau:
-\begin{itemize}
-    \item \textbf{Vùng Thượng (Upper Region - Trán và mắt):} Được giới hạn từ 0\% đến 45\% chiều cao của khuôn mặt.
-    \item \textbf{Vùng Trung (Mid Region - Sống mũi và má):} Được giới hạn từ 30\% đến 70\% chiều cao của khuôn mặt.
-    \item \textbf{Vùng Hạ (Lower Region - Miệng và cằm):} Được giới hạn từ 55\% đến 100\% chiều cao của khuôn mặt.
-\end{itemize}
-
-\noindent \textbf{Cơ sở lựa chọn tỷ lệ phân vùng:}
-Các con số tỉ lệ $(0.45; 0.30 - 0.70; 0.55)$ được em tính toán thiết lập dựa trên việc phân tích phân phối tọa độ trung bình của các mốc điểm hình học khuôn mặt (Facial Landmarks) bằng thuật toán MTCNN/RetinaFace trên tập dữ liệu. Khoảng tọa độ mắt thường tập trung ở vị trí 30\% - 45\% chiều cao, mũi tập trung ở 40\% - 70\%, miệng và cằm từ 65\% trở đi. Đặc biệt, em thiết kế **các vùng gối đầu lên nhau (Overlap)** (vùng gối 30\% - 45\% giữa Thượng/Trung và vùng gối 55\% - 70\% giữa Trung/Hạ). Việc tạo vùng gối đầu này là kỹ thuật tự đề xuất bắt buộc, nhằm ngăn chặn các đặc trưng liên kết quan trọng tại khu vực chuyển tiếp (như bọng mắt, sống mũi trên và nếp nhăn khóe cười) bị cắt đôi cơ học, giúp duy trì tính liền mạch thông tin của không gian đặc trưng.
-
-Nhằm triệt tiêu nhiễu biên tần số cao tại các lát cắt (như cơ sở lý thuyết đã phân tích tại Mục 2.1.6), em áp dụng kỹ thuật Mặt nạ làm mờ biên (Blur-Masking) tự lập trình thông qua OpenCV theo các bước cụ thể:
-\begin{enumerate}
-    \item Khởi tạo ảnh nền làm mờ bằng cách áp dụng bộ lọc Gaussian Blur của thư viện OpenCV lên toàn bộ hình ảnh khuôn mặt đầu vào. Kích thước kernel tích chập được em chọn thực nghiệm là $51 \times 51$. Cỡ nhân $51 \times 51$ này được em lựa chọn sau quá trình thực nghiệm vì nếu cỡ nhân quá nhỏ (dưới $15 \times 15$), vùng biên cắt vẫn giữ độ sắc cạnh gây nhiễu CNN; nếu quá lớn (trên $101 \times 101$), vùng làm mờ sẽ lấn át sâu vào khu vực trung tâm làm mất thông tin nhận diện.
-    \item Tạo ba mặt nạ nhị phân (Binary Masks) tương ứng với tọa độ giới hạn hình học của các vùng Thượng, Trung và Hạ.
-    \item Sử dụng các phép toán ma trận NumPy để đè vùng ảnh sắc nét lên ảnh nền đã làm mờ thông qua mặt nạ, tạo ra sự chuyển tiếp mượt mà tại các biên phân cắt.
-\end{enumerate}
-
-\subsection*{3.3. Thiết kế mạng ánh xạ đặc trưng thích ứng (Feature Projector)}
-\addcontentsline{toc}{subsection}{\numberline{}3.3. Thiết kế mạng ánh xạ đặc trưng thích ứng (Feature Projector)}
-
-Lớp chiếu đặc trưng thích ứng (Feature Projector) được em thiết kế dưới dạng một lớp liên kết đầy đủ (Fully Connected Layer) đơn giản đặt ngay sau lớp đầu ra của mô hình nền tảng Facenet512. Lớp này nhận vector đặc trưng 512 chiều của mỗi phân vùng và thực hiện phép biến đổi tuyến tính kết hợp chuẩn hóa L2 (như cơ sở lý thuyết đã trình bày tại Mục 2.1.7) để thu được vector đặc trưng thích ứng mới.
-
-\noindent \textbf{Cơ sở thiết kế kiến trúc lớp chiếu:}
-Lớp chiếu tuyến tính phụ được em thiết kế giữ nguyên số chiều $512 \rightarrow 512$. Việc giữ nguyên số chiều (không giảm chiều) là cần thiết vì mỗi phân vùng sau khi làm mờ đã bị suy giảm đáng kể mật độ thông tin biểu diễn so với ảnh toàn khuôn mặt. Do đó, việc giữ nguyên 512 chiều giúp bảo toàn tối đa dung lượng chứa đặc trưng, tránh hiện tượng mất mát thông tin cục bộ do nén chiều dữ liệu.
-
-Trong pha đối sánh trực tuyến, các trọng số $\bm{W}$ và bias $\bm{b}$ của lớp chiếu được tải tự động từ tệp trọng số đã huấn luyện \texttt{facenet512\_projector\_weights.npz} lưu trữ tại máy chủ. Tầng liên kết đầy đủ được đặt tên là \texttt{projector\_dense} thực hiện tính toán song song cho từng phân vùng.
-
-\subsection*{3.4. Quy trình huấn luyện tối ưu hóa ma trận chiếu bằng Triplet Loss}
-\addcontentsline{toc}{subsection}{\numberline{}3.4. Quy trình huấn luyện tối ưu hóa ma trận chiếu bằng Triplet Loss}
-
-Quy trình huấn luyện tinh chỉnh ma trận chiếu offline được thực hiện trên tập dữ liệu phẫu thuật thẩm mỹ C2FPW. Tập dữ liệu được phân chia thành tập huấn luyện gồm 70 đối tượng (từ S001 đến S070) để thực hiện học khoảng cách đặc trưng (cơ sở lý thuyết tại Mục 2.1.8).
-
-\subsubsection*{3.4.1. Thiết lập bộ ba huấn luyện và chiến lược chọn mẫu (Triplet Selection)}
-Quy trình sinh bộ ba mẫu tự động (online triplet generator) được lập trình để sinh các bộ ba mẫu $(A, P, N)$ từ tập dữ liệu phẫu thuật thẩm mỹ:
-\begin{itemize}
-    \item \textbf{Anchor ($A$):} Chọn ngẫu nhiên từ tập ảnh chụp trước phẫu thuật thẩm mỹ (Before PTTM) của chủ thể $i$.
-    \item \textbf{Positive ($P$):} Chọn ngẫu nhiên từ tập ảnh chụp sau phẫu thuật thẩm mỹ (After PTTM) của cùng chủ thể $i$.
-    \item \textbf{Negative ($N$):} Chọn ngẫu nhiên từ tập ảnh của một chủ thể khác $j$ ($j \neq i$) bất kỳ.
-\end{itemize}
-Chiến lược ghép cặp chéo Trước - Sau PTTM này do em tự thiết kế dựa trên kịch bản thực tế của hệ thống CRM, bắt buộc mô hình phải kéo các vector biến dạng thẩm mỹ về gần với ảnh gốc ban đầu.
-
-\subsubsection*{3.4.2. Cấu hình huấn luyện và tối ưu hóa tham số}
-Quá trình huấn luyện sử dụng bộ tối ưu hóa Adam \cite{kingma2014adam} với các siêu tham số được xác định kết hợp giữa tiêu chuẩn nghiên cứu quốc tế và thực nghiệm tinh chỉnh của em:
-\begin{itemize}
-    \item \textbf{Đóng băng mô hình nền tảng:} Đóng băng toàn bộ trọng số của backbone Facenet512. Thuật toán lan truyền ngược chỉ tập trung tính toán gradient và cập nhật trọng số cho duy nhất lớp chiếu tuyến tính \texttt{projector\_dense} nhằm tránh hiện tượng quá khớp (overfitting).
-    \item \textbf{Tốc độ học (learning rate):} Thiết lập $\eta = 0.0005$. Mức giá trị này được em xác định thông qua thực nghiệm quan sát đường cong hội tụ (Loss curve) trên tập kiểm thử nhằm tránh hiện tượng dao động gradient.
-    \item \textbf{Biên an toàn Triplet Loss:} Thiết lập hằng số margin $\alpha = 0.2$ kế thừa từ nghiên cứu gốc của FaceNet \cite{schroff2015facenet} để ngăn chặn hiện tượng sụp đổ không gian đặc trưng.
-    \item \textbf{Quy mô huấn luyện:} Chạy trong 15 epochs, mỗi epoch thực hiện 20 bước (steps) cập nhật với kích thước lô (batch size) là 32 bộ ba mẫu (Anchor, Positive, Negative) cho mỗi phân vùng. Các thông số quy mô này được em tinh chỉnh dựa trên điểm dừng hội tụ thực tế của hàm mất mát.
-\end{itemize}
-Sau khi hoàn tất huấn luyện, ma trận trọng số $\bm{W}$ và bias $\bm{b}$ được xuất ra file lưu trữ để phục vụ pha đối sánh trực tuyến.
-
-\subsection*{3.5. Thuật toán đối sánh dung hợp trọng số sinh học (Weighted Bio-fusion)}
-\addcontentsline{toc}{subsection}{\numberline{}3.5. Thuật toán đối sánh dung hợp trọng số sinh học (Weighted Bio-fusion)}
-
-Trong pha đối sánh thực tế, thay vì so khớp một khoảng cách toàn khuôn mặt duy nhất, hệ thống thực hiện trích xuất vector đặc trưng thích ứng cho từng phân vùng và tiến hành dung hợp khoảng cách (như cơ sở lý thuyết đã trình bày tại Mục 2.1.5).
-
-Các hệ số trọng số sinh học tối ưu và ngưỡng quyết định được thiết lập cố định như sau:
-\begin{itemize}
-    \item \textbf{Trọng số vùng Thượng ($w_{\text{upper}}$):} Thiết lập bằng $0.5$ (vùng mắt và trán có tính bền vững sinh học cao nhất).
-    \item \textbf{Trọng số vùng Trung ($w_{\text{mid}}$):} Thiết lập bằng $0.3$ (vùng mũi chịu tác động trung bình).
-    \item \textbf{Trọng số vùng Hạ ($w_{\text{lower}}$):} Thiết lập bằng $0.2$ (vùng hàm và cằm chịu tác động phẫu thuật nặng nhất).
-    \item \textbf{Ngưỡng quyết định nhận dạng ($\theta$):} Thiết lập bằng $0.30$.
-\end{itemize}
-
-\noindent \textbf{Cơ sở xác định các giá trị thực nghiệm:}
-\begin{itemize}
-    \item \textbf{Bộ trọng số $(0.5; 0.3; 0.2)$:} Được tối ưu hóa bằng thuật toán tìm kiếm lưới (Grid Search) chạy thực tế trên tập dữ liệu C2FPW (như đã phân tích và chứng minh thực nghiệm tại Mục 2.1.5).
-    \item \textbf{Ngưỡng đối sánh $\theta = 0.30$:} Được em xác định thông qua thực nghiệm vẽ đường cong ROC (Receiver Operating Characteristic) trên tập kiểm thử, tìm điểm tối ưu mà tại đó tổng tỷ lệ từ chối sai (FRR) và chấp nhận sai (FAR) đạt mức tối thiểu toàn cục (Equal Error Rate - EER).
-\end{itemize}
-
-Thuật toán đối sánh dung hợp này được em lập trình tích hợp trực tiếp dưới tầng cơ sở dữ liệu PostgreSQL sử dụng extension \texttt{pgvector} để tính toán khoảng cách Cosine song song giữa các phân vùng tương ứng, giúp giảm thiểu độ trễ truy vấn hệ thống check-in thời gian thực.
-
-\subsection*{3.6. Mô hình hệ thống thử nghiệm phục vụ thực nghiệm (Demo System)}
-\addcontentsline{toc}{subsection}{\numberline{}3.6. Mô hình hệ thống thử nghiệm phục vụ thực nghiệm (Demo System)}
-
-Để thực nghiệm và chứng minh tính ứng dụng của phương pháp nghiên cứu đề xuất, một mô hình ứng dụng thử nghiệm (Demo) được xây dựng dưới cấu trúc kiến trúc 3 lớp:
-\begin{itemize}
-    \item \textbf{Giao diện Demo (Next.js):} Mô phỏng các chức năng đăng ký chân dung thành viên và quét camera nhận diện.
-    \item \textbf{Dịch vụ xử lý (FastAPI):} Đóng gói mô hình đề xuất và thực hiện tính toán đặc trưng.
-    \item \textbf{Hệ lưu trữ đặc trưng (PostgreSQL + pgvector):} Lưu trữ thông tin định danh mẫu và hỗ trợ tính toán khoảng cách đối sánh dung hợp trực tiếp ở mức CSDL bằng ngôn ngữ truy vấn SQL.
-\end{itemize}
-
