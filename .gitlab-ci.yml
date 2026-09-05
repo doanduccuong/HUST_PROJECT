@@ -1,0 +1,31 @@
+# CI/CD for HUST_PROJECT on postmarketOS (Alpine Linux) phone runner.
+
+stages:
+  - deploy
+
+variables:
+  DOCKER_BUILDKIT: "1"
+  DEPLOY_PATH: "/home/haserver/HUST_PROJECT"
+
+deploy:
+  stage: deploy
+  tags:
+    - rizztcg-runner # Phù hợp với tag đã cấu hình cho runner trên điện thoại
+  before_script:
+    - cd "$DEPLOY_PATH"
+    - docker version
+  script:
+    # 1. Cập nhật mã nguồn mới nhất
+    - git fetch origin
+    - git checkout -f main || git checkout -f -B main origin/main
+    - git reset --hard origin/main
+    # 2. Khởi động DB trước
+    - docker compose up -d postgres
+    # 3. Build & Recreate các dịch vụ tuần tự để tránh quá tải RAM (OOM) của điện thoại
+    - docker compose up -d --build face-service
+    - docker compose up -d --build crm-api
+    - docker compose up -d --build web
+    # 4. Kiểm tra trạng thái
+    - docker compose ps
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"

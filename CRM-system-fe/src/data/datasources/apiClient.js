@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Khởi tạo instance của Axios tương tự như Dio bên Flutter
 export const ApiClient = axios.create({
-  baseURL: "http://localhost:8081",
+  baseURL: "",
   timeout: 15000,
 });
 

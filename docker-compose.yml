@@ -61,6 +61,8 @@ services:
   web:
     build:
       context: ./CRM-system-fe
+    environment:
+      - BACKEND_URL=http://crm-api:8081
     ports:
       - "3000:3000"
     depends_on:

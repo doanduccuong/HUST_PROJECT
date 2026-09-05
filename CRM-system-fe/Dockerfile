@@ -7,6 +7,7 @@ FROM node:22-alpine AS build
 WORKDIR /app
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
+ENV BACKEND_URL=http://crm-api:8081
 RUN npm run build
 
 FROM node:22-alpine

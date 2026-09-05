@@ -6,7 +6,7 @@ import { RegisterUseCase } from "../domain/usecases/register.usecase";
 import { Customer } from "../domain/models/customer";
 
 // Khởi tạo các dependency (Manual Dependency Injection)
-const customerApi = new CustomerApi("http://localhost:8081");
+const customerApi = new CustomerApi();
 const customerRepo = new CustomerRepositoryImpl(customerApi);
 const checkinUseCase = new CheckinUseCase(customerRepo);
 const registerUseCase = new RegisterUseCase(customerRepo);
