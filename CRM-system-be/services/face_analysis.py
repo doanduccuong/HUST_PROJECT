@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import time
 from typing import Any
 
 import cv2
 import numpy as np
-from deepface import DeepFace
 
 from services.facial_segmentation import segment_face_regions
 from services.projector import project_embedding
@@ -31,6 +31,8 @@ def _first_analysis_item(result: Any) -> dict[str, Any]:
 
 
 def _embedding(region: np.ndarray) -> list[float]:
+    from deepface import DeepFace
+
     representation = DeepFace.represent(
         img_path=region,
         model_name=MODEL_NAME,
@@ -68,18 +70,23 @@ def _quality(face_bgr: np.ndarray, detection_confidence: float) -> dict[str, Any
         reasons.append("IMAGE_TOO_BRIGHT")
     if confidence < 0.80:
         reasons.append("LOW_FACE_CONFIDENCE")
+    if score < 0.45:
+        reasons.append("LOW_QUALITY_SCORE")
 
     return {
         "score": round(score, 4),
         "blurScore": round(blur_score, 4),
         "brightnessScore": round(brightness_score, 4),
         "detectionConfidence": round(confidence, 4),
-        "accepted": score >= 0.45 and confidence >= 0.70,
+        "accepted": not reasons,
         "reasons": reasons,
     }
 
 
 def analyze_image_bytes(image_bytes: bytes) -> dict[str, Any]:
+    from deepface import DeepFace
+
+    started_at = time.perf_counter()
     image_array = np.frombuffer(image_bytes, dtype=np.uint8)
     raw_image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
     if raw_image is None:
@@ -124,11 +131,19 @@ def analyze_image_bytes(image_bytes: bytes) -> dict[str, Any]:
         if isinstance(extracted, dict)
         else 1.0
     )
+    raw_region = extracted.get("facial_area", {}) if isinstance(extracted, dict) else {}
+    region = {
+        "x": max(0, int(raw_region.get("x", 0))),
+        "y": max(0, int(raw_region.get("y", 0))),
+        "width": max(0, int(raw_region.get("w", 0))),
+        "height": max(0, int(raw_region.get("h", 0))),
+    }
 
-    return {
+    result = {
         "modelVersion": MODEL_VERSION,
         "faceCount": 1,
         "primaryFace": {
+            "region": region,
             "embeddings": {
                 "upper": _embedding(upper),
                 "mid": _embedding(mid),
@@ -142,3 +157,5 @@ def analyze_image_bytes(image_bytes: bytes) -> dict[str, Any]:
             "quality": _quality(face_bgr, detection_confidence),
         },
     }
+    result["inferenceMs"] = max(0, round((time.perf_counter() - started_at) * 1000))
+    return result

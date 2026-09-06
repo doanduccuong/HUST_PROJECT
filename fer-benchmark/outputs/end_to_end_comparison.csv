@@ -1,0 +1,4 @@
+combination,dataset,sample_count,detection_rate,macro_f1,accuracy,no_result_rate,p95_ms,eligible,selected
+opencv + CNN FER 7-class,CKPlus-7-reproducibility,182,1.0,0.3328164864390436,0.6098901098901099,0.0,29.274712799999996,True,True
+mtcnn + CNN FER 7-class,CKPlus-7-reproducibility,182,1.0,0.28667760810617954,0.5714285714285714,0.0,361.01684374999996,True,False
+retinaface + CNN FER 7-class,CKPlus-7-reproducibility,182,1.0,0.32489306958087605,0.5714285714285714,0.0,1126.42333155,True,False

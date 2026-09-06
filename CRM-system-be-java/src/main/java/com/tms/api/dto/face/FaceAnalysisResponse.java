@@ -6,13 +6,22 @@ import java.util.Map;
 public record FaceAnalysisResponse(
         String traceId,
         String modelVersion,
+        long inferenceMs,
         int faceCount,
         AnalyzedFace primaryFace
 ) {
     public record AnalyzedFace(
+            Region region,
             Embeddings embeddings,
             Expression expression,
             Quality quality
+    ) {}
+
+    public record Region(
+            int x,
+            int y,
+            int width,
+            int height
     ) {}
 
     public record Embeddings(

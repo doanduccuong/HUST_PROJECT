@@ -1,5 +1,6 @@
 package com.tms.api.controller;
 
+import com.tms.api.dto.experience.ExperienceDataMode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +19,7 @@ public class ExperienceLogsController {
     public ResponseEntity<List<Map<String, Object>>> getJourneys(
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "date", required = false) String date,
+            @RequestParam(value = "dataMode", defaultValue = "REAL_ONLY") ExperienceDataMode dataMode,
             @RequestParam(value = "limit", defaultValue = "100") int limit) {
         String sql = """
             SELECT es.customer_id, c.name as customer_name, c.user_image as customer_image,
@@ -29,6 +31,7 @@ public class ExperienceLogsController {
             WHERE es.customer_id IS NOT NULL
             """;
         List<Object> params = new ArrayList<>();
+        sql += " AND " + dataMode.sessionPredicate("es") + " ";
         if (date != null && !date.isEmpty()) {
             sql += " AND es.started_at::date = ?::date ";
             params.add(date);
@@ -59,9 +62,9 @@ public class ExperienceLogsController {
                         WHERE ese.session_id = es.id 
                         ORDER BY ese.observed_at ASC LIMIT 1) as experience_state
                 FROM experience_sessions es
-                WHERE es.customer_id = ? AND es.started_at::date = ?::date
+                WHERE es.customer_id = ? AND es.started_at::date = ?::date AND %s
                 ORDER BY es.started_at ASC
-                """;
+                """.formatted(dataMode.sessionPredicate("es"));
             List<Map<String, Object>> steps = jdbcTemplate.query(stepsSql, (stepRs, stepRowNum) -> {
                 Map<String, Object> stepMap = new LinkedHashMap<>();
                 stepMap.put("id", stepRs.getObject("id"));
@@ -87,6 +90,7 @@ public class ExperienceLogsController {
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "zone", required = false) String zone,
             @RequestParam(value = "date", required = false) String date,
+            @RequestParam(value = "dataMode", defaultValue = "REAL_ONLY") ExperienceDataMode dataMode,
             @RequestParam(value = "limit", defaultValue = "100") int limit) {
         String sql = """
             SELECT es.id, es.camera_id, es.zone, es.local_track_id, es.started_at, es.ended_at, es.data_origin,
@@ -96,6 +100,7 @@ public class ExperienceLogsController {
             WHERE 1=1
             """;
         List<Object> params = new ArrayList<>();
+        sql += " AND " + dataMode.sessionPredicate("es") + " ";
         if (zone != null && !zone.isEmpty() && !zone.equalsIgnoreCase("ALL")) {
             sql += " AND UPPER(es.zone) = ? ";
             params.add(zone.toUpperCase());
@@ -135,17 +140,22 @@ public class ExperienceLogsController {
             @RequestParam(value = "zone", required = false) String zone,
             @RequestParam(value = "state", required = false) String state,
             @RequestParam(value = "date", required = false) String date,
+            @RequestParam(value = "dataMode", defaultValue = "REAL_ONLY") ExperienceDataMode dataMode,
             @RequestParam(value = "limit", defaultValue = "100") int limit) {
         String sql = """
             SELECT ese.id, ese.session_id, ese.camera_id, ese.zone, ese.observed_at,
                    ese.raw_expression, ese.raw_expression_confidence,
                    ese.experience_state, ese.state_confidence, ese.expression_probabilities,
+                   ese.quality_score, ese.accepted, ese.reject_reasons, ese.inference_ms,
+                   ese.previous_state, ese.state_changed, ese.transition_reason,
+                   ese.smoothed_probabilities, ese.source,
                    c.name as customer_name, c.user_image as customer_image
             FROM experience_state_events ese
             LEFT JOIN customers c ON c.id = ese.customer_id
             WHERE 1=1
             """;
         List<Object> params = new ArrayList<>();
+        sql += " AND " + dataMode.eventPredicate("ese") + " ";
         if (zone != null && !zone.isEmpty() && !zone.equalsIgnoreCase("ALL")) {
             sql += " AND UPPER(ese.zone) = ? ";
             params.add(zone.toUpperCase());
@@ -177,6 +187,15 @@ public class ExperienceLogsController {
             map.put("experienceState", rs.getString("experience_state"));
             map.put("stateConfidence", rs.getDouble("state_confidence"));
             map.put("expressionProbabilities", rs.getString("expression_probabilities"));
+            map.put("qualityScore", rs.getObject("quality_score"));
+            map.put("accepted", rs.getBoolean("accepted"));
+            map.put("rejectReasons", rs.getString("reject_reasons"));
+            map.put("inferenceMs", rs.getObject("inference_ms"));
+            map.put("previousState", rs.getString("previous_state"));
+            map.put("stateChanged", rs.getBoolean("state_changed"));
+            map.put("transitionReason", rs.getString("transition_reason"));
+            map.put("smoothedProbabilities", rs.getString("smoothed_probabilities"));
+            map.put("source", rs.getString("source"));
             map.put("customerName", rs.getString("customer_name"));
             map.put("customerImage", rs.getString("customer_image"));
             return map;
@@ -189,6 +208,7 @@ public class ExperienceLogsController {
     public ResponseEntity<List<Map<String, Object>>> getPurchaseSummaries(
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "date", required = false) String date,
+            @RequestParam(value = "dataMode", defaultValue = "REAL_ONLY") ExperienceDataMode dataMode,
             @RequestParam(value = "limit", defaultValue = "100") int limit) {
         String sql = """
             SELECT pes.order_id, pes.pre_purchase_state, pes.post_purchase_state,
@@ -202,6 +222,7 @@ public class ExperienceLogsController {
             WHERE 1=1
             """;
         List<Object> params = new ArrayList<>();
+        sql += " AND " + dataMode.purchasePredicate("pes") + " ";
         if (date != null && !date.isEmpty()) {
             sql += " AND pes.calculated_at::date = ?::date ";
             params.add(date);

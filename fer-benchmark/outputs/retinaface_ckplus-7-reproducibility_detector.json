@@ -1,0 +1,33 @@
+{
+  "detector": "retinaface",
+  "dataset": "CKPlus-7-reproducibility",
+  "sample_count": 182,
+  "positive_frames": 182,
+  "no_face_frames": 0,
+  "detection_rate": 1.0,
+  "miss_rate": 0.0,
+  "false_positive_rate": 0.0,
+  "exact_count_accuracy": 1.0,
+  "invalid_crop_rate": 0.0,
+  "condition_report": {
+    "ckplus_cropped": {
+      "samples": 182,
+      "expected_positive": 182,
+      "detected_positive": 182,
+      "detection_rate": 1.0
+    },
+    "upscaled_224": {
+      "samples": 182,
+      "expected_positive": 182,
+      "detected_positive": 182,
+      "detection_rate": 1.0
+    }
+  },
+  "latency_ms": {
+    "count": 182,
+    "mean": 911.0157653131872,
+    "p50": 866.8692495,
+    "p95": 1119.5038312499998,
+    "p99": 1202.74357071
+  }
+}

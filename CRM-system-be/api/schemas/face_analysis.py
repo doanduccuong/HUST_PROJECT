@@ -24,7 +24,15 @@ class FaceQualityResult(BaseModel):
     reasons: List[str]
 
 
+class FaceRegion(BaseModel):
+    x: int
+    y: int
+    width: int
+    height: int
+
+
 class AnalyzedFace(BaseModel):
+    region: FaceRegion
     embeddings: FaceEmbeddings
     expression: ExpressionResult
     quality: FaceQualityResult
@@ -33,5 +41,6 @@ class AnalyzedFace(BaseModel):
 class FaceAnalysisResponse(BaseModel):
     traceId: str
     modelVersion: str
+    inferenceMs: int
     faceCount: int
     primaryFace: AnalyzedFace

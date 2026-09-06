@@ -1,0 +1,148 @@
+{
+  "detector": "mtcnn",
+  "fer_model": "CNN FER 7-class",
+  "combination": "mtcnn + CNN FER 7-class",
+  "dataset": "CKPlus-7-reproducibility",
+  "sample_count": 182,
+  "valid_predictions": 182,
+  "no_result_rate": 0.0,
+  "accuracy": 0.5714285714285714,
+  "macro_precision": 0.3708988545913415,
+  "macro_recall": 0.33913565426170467,
+  "macro_f1": 0.28667760810617954,
+  "labels": [
+    "angry",
+    "disgust",
+    "fear",
+    "happy",
+    "sad",
+    "surprise",
+    "neutral"
+  ],
+  "confusion_matrix": [
+    [
+      3,
+      0,
+      1,
+      0,
+      0,
+      0,
+      5
+    ],
+    [
+      7,
+      0,
+      0,
+      2,
+      0,
+      0,
+      3
+    ],
+    [
+      0,
+      0,
+      0,
+      4,
+      0,
+      0,
+      1
+    ],
+    [
+      0,
+      0,
+      0,
+      14,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      1,
+      0,
+      1,
+      0,
+      4
+    ],
+    [
+      1,
+      0,
+      5,
+      3,
+      0,
+      3,
+      5
+    ],
+    [
+      1,
+      0,
+      5,
+      28,
+      1,
+      1,
+      83
+    ]
+  ],
+  "missed_by_class": {
+    "angry": 0,
+    "disgust": 0,
+    "fear": 0,
+    "happy": 0,
+    "sad": 0,
+    "surprise": 0,
+    "neutral": 0
+  },
+  "per_class": {
+    "angry": {
+      "precision": 0.25,
+      "recall": 0.3333333333333333,
+      "f1": 0.28571428571428575,
+      "support": 9
+    },
+    "disgust": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 12
+    },
+    "fear": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 5
+    },
+    "happy": {
+      "precision": 0.27450980392156865,
+      "recall": 1.0,
+      "f1": 0.43076923076923085,
+      "support": 14
+    },
+    "sad": {
+      "precision": 0.5,
+      "recall": 0.16666666666666666,
+      "f1": 0.25,
+      "support": 6
+    },
+    "surprise": {
+      "precision": 0.75,
+      "recall": 0.17647058823529413,
+      "f1": 0.2857142857142857,
+      "support": 17
+    },
+    "neutral": {
+      "precision": 0.8217821782178217,
+      "recall": 0.6974789915966386,
+      "f1": 0.7545454545454545,
+      "support": 119
+    }
+  },
+  "detection_rate": 1.0,
+  "latency_ms": {
+    "count": 182,
+    "mean": 347.0796485659341,
+    "p50": 345.5301665,
+    "p95": 361.01684374999996,
+    "p99": 427.22241971
+  }
+}

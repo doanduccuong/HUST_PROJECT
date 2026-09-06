@@ -27,7 +27,7 @@ Phát hiện khuôn mặt là tác vụ xác định vị trí và kích thướ
 \subsubsection*{2.1.3. Đánh giá chất lượng ảnh thu nhận (Image Quality Assessment)}
 \addcontentsline{toc}{subsubsection}{\numberline{}2.1.3. Đánh giá chất lượng ảnh thu nhận (Image Quality Assessment)}
 
-Trong môi trường thực tế của cửa hàng, khách hàng liên tục di chuyển khiến nhiều khung hình bị mờ do chuyển động (motion blur), thiếu sáng hoặc cháy sáng. Nếu đưa trực tiếp các khung hình suy biến này vào mô hình AI, kết quả dự đoán sẽ có độ bất định cao và gây nhiễu cho hệ thống phân tích. Do đó, hệ thống tích hợp bộ lọc chất lượng ảnh dựa trên hai kỹ thuật xử lý ảnh số \cite{gonzalez2018digital}:
+Trong môi trường thực tế của cửa hàng, khách hàng liên tục di chuyển khiến nhiều khung hình bị mờ do chuyển động (motion blur), thiếu sáng hoặc quá sáng. Nếu đưa trực tiếp các khung hình suy biến này vào mô hình AI, kết quả dự đoán sẽ có độ bất định cao và gây nhiễu cho hệ thống phân tích. Do đó, hệ thống tích hợp bộ lọc chất lượng ảnh dựa trên hai kỹ thuật xử lý ảnh số \cite{gonzalez2018digital}:
 \begin{enumerate}
     \item \textbf{Phát hiện độ mờ bằng phương sai toán tử Laplace (Laplacian Variance):} Toán tử Laplace 2D là một toán tử đạo hàm bậc hai làm nổi bật các biến thiên cường độ sáng nhanh (cạnh sắc nét trong ảnh). Với ảnh mức xám $I(x, y)$, phương sai của ảnh sau khi tích chập với toán tử Laplace được định nghĩa:
     \begin{equation}
@@ -70,16 +70,21 @@ Theo nghiên cứu kinh điển của nhà tâm lý học Paul Ekman và Hệ th
 \subsubsection*{2.2.2. Kiến trúc mạng nơ-ron tích chập (CNN) trong bài toán FER}
 \addcontentsline{toc}{subsubsection}{\numberline{}2.2.2. Kiến trúc mạng nơ-ron tích chập (CNN) trong bài toán FER}
 
-Bài toán FER được mô hình hóa dưới dạng bài toán phân lớp đa lớp (Multi-class Classification). Các kiến trúc mạng học sâu hiện đại sử dụng các khối tích chập sâu kết hợp cơ chế chú ý (Attention Mechanisms) và kỹ thuật chuyển giao tri thức (Transfer Learning) từ các mô hình được tiền huấn luyện trên các tập dữ liệu khuôn mặt quy mô lớn (như VGGFace2, MS-Celeb-1M, AffectNet, FER2013 \cite{fer2013}):
+Bài toán FER được mô hình hóa dưới dạng bài toán phân lớp đa lớp (Multi-class Classification). Ảnh khuôn mặt sau khi được phát hiện, căn chỉnh và chuẩn hóa sẽ được đưa vào mạng nơ-ron tích chập để trích xuất đặc trưng không gian ở nhiều mức độ khác nhau. Các lớp tích chập đầu thường học các đặc trưng cơ bản như cạnh, vùng sáng tối và đường cong; các lớp sâu hơn kết hợp những đặc trưng này thành cấu trúc có ý nghĩa hơn như mắt, lông mày, khóe miệng, nếp nhăn vùng mũi hoặc độ mở của miệng. Từ các đặc trưng đó, lớp phân loại cuối cùng sinh ra phân bố xác suất cho 7 lớp biểu cảm tiêu chuẩn.
+
+Trong thực tế, các kiến trúc mạng học sâu hiện đại thường kết hợp các khối tích chập sâu, kỹ thuật học chuyển giao (Transfer Learning) từ các mô hình được tiền huấn luyện trên những tập dữ liệu khuôn mặt quy mô lớn (như VGGFace2, MS-Celeb-1M, AffectNet, FER2013 \cite{fer2013}) và đôi khi bổ sung cơ chế chú ý (Attention Mechanisms) để tập trung vào các vùng mặt có giá trị phân biệt cao. Một số kiến trúc thường gặp gồm:
 \begin{itemize}
     \item \textbf{MobileNetV2 / MobileNetV3 \cite{mobilenetv2}:} Sử dụng các khối tích chập tách biệt theo chiều sâu (Depthwise Separable Convolutions) và cấu trúc đảo ngược nút cổ chai (Inverted Residuals). Kiến trúc này giúp giảm đáng kể số lượng tham số và số phép tính dấu phẩy động (FLOPs), cho phép triển khai suy luận với tốc độ trên 30 FPS trên các máy chủ phổ thông hoặc thiết bị biên.
-    \item \textbf{EfficientNet / ResNet:} Khai thác các kết nối tắt (Residual Connections) để huấn luyện các mạng sâu hơn mà không bị triệt tiêu gradient, mang lại độ chính xác cao đối với các biểu cảm vi mô (micro-expressions) có độ tinh tế lớn.
+    \item \textbf{ResNet:} Sử dụng các kết nối tắt (Residual Connections) để hỗ trợ huấn luyện mạng CNN có nhiều lớp. Trong quá trình lan truyền ngược, gradient là tín hiệu cho biết mỗi trọng số của mô hình cần được điều chỉnh theo hướng nào để làm giảm hàm mất mát. Khi mô hình có quá nhiều lớp, tín hiệu này có thể nhỏ dần khi truyền từ lớp cuối về các lớp đầu, khiến trọng số ở các lớp tích chập đầu cập nhật rất chậm hoặc gần như không được cập nhật; hiện tượng đó được gọi là triệt tiêu gradient (Vanishing Gradient). ResNet khắc phục một phần vấn đề này bằng cách cộng trực tiếp đầu vào của một khối với đầu ra sau các lớp tích chập, thường được mô tả dưới dạng $y = F(x) + x$. Nhờ đường truyền tắt này, thông tin và gradient có thể lan truyền ổn định hơn qua nhiều lớp, giúp mô hình CNN cập nhật trọng số hiệu quả hơn và học được các đặc trưng khuôn mặt phức tạp hơn phục vụ phân loại biểu cảm.
+    \item \textbf{EfficientNet:} Không tập trung chủ yếu vào kết nối tắt như ResNet, mà tối ưu sự cân bằng giữa độ sâu, độ rộng của mạng và độ phân giải ảnh đầu vào thông qua chiến lược mở rộng đồng bộ (Compound Scaling). Cách thiết kế này giúp cải thiện hiệu quả tính toán, đạt độ chính xác tốt với số tham số và FLOPs hợp lý. Trong bài toán FER, EfficientNet phù hợp khi cần cân bằng giữa chất lượng phân loại biểu cảm và chi phí suy luận, đặc biệt với dữ liệu khuôn mặt có biến thiên về ánh sáng, góc nhìn và kích thước khuôn mặt.
 \end{itemize}
 
-\subsubsection*{2.2.3. Hàm mất mát phân lớp và phân bố xác suất Softmax}
-\addcontentsline{toc}{subsubsection}{\numberline{}2.2.3. Hàm mất mát phân lớp và phân bố xác suất Softmax}
+Đối với FER, các kiến trúc CNN sâu có lợi thế vì biểu cảm khuôn mặt nhiều khi chỉ khác nhau ở các thay đổi rất nhỏ, chẳng hạn khóe miệng hơi nhếch, lông mày hơi cau, mí mắt hơi hạ hoặc vùng mũi nhăn nhẹ. Tuy nhiên, việc sử dụng mạng càng sâu không tự động bảo đảm kết quả tốt hơn; hiệu quả thực tế còn phụ thuộc vào chất lượng dữ liệu huấn luyện, cân bằng lớp, tiền xử lý khuôn mặt, khả năng chống nhiễu và độ trễ trong quá trình suy luận khi triển khai camera thời gian thực.
 
-Đầu ra của mạng nơ-ron là vector logits $\bm{z} = [z_1, z_2, \dots, z_7]^T \in \mathbb{R}^7$. Hàm kích hoạt Softmax chuyển đổi vector logits thành phân bố xác suất hợp lệ trên 7 lớp biểu cảm:
+\subsubsection*{2.2.3. Đầu ra của mạng nơ-ron trong bài toán FER}
+\addcontentsline{toc}{subsubsection}{\numberline{}2.2.3. Đầu ra của mạng nơ-ron trong bài toán FER}
+
+Sau khi mạng CNN trích xuất đặc trưng khuôn mặt, lớp phân loại cuối cùng tạo ra đầu ra thô cho từng lớp biểu cảm. Đầu ra này được biểu diễn dưới dạng vector logits $\bm{z} = [z_1, z_2, \dots, z_7]^T \in \mathbb{R}^7$. Hàm kích hoạt Softmax chuyển đổi vector logits thành phân bố xác suất hợp lệ trên 7 lớp biểu cảm:
 \begin{equation}
 p_i = \frac{e^{z_i}}{\sum_{j=1}^{7} e^{z_j}}, \quad \forall i \in \{1, 2, \dots, 7\}, \quad \text{sao cho} \quad \sum_{i=1}^{7} p_i = 1.0
 \end{equation}
@@ -89,57 +94,127 @@ Mô hình được tối ưu hóa bằng hàm mất mát Cross-Entropy:
 \end{equation}
 Trong đó $\bm{y}$ là vector nhãn one-hot thực tế. Lớp có xác suất lớn nhất $p_{\text{max}} = \max_i(p_i)$ được chọn làm biểu cảm chủ đạo (Dominant Expression), và giá trị $p_{\text{max}}$ chính là độ tin cậy dự đoán (Confidence).
 
-\subsection*{2.3. Xử lý chuỗi thời gian trong giám sát cảm xúc video (Temporal Processing)}
-\addcontentsline{toc}{subsection}{\numberline{}2.3. Xử lý chuỗi thời gian trong giám sát cảm xúc video (Temporal Processing)}
+\subsubsection*{2.2.4. Quy trình thực nghiệm lựa chọn detector và mô hình FER}
+\addcontentsline{toc}{subsubsection}{\numberline{}2.2.4. Quy trình thực nghiệm lựa chọn detector và mô hình FER}
 
-\subsubsection*{2.3.1. Thách thức về tính không ổn định khung hình (Frame-level Flickering)}
-\addcontentsline{toc}{subsubsection}{\numberline{}2.3.1. Thách thức về tính không ổn định khung hình (Frame-level Flickering)}
+Trong bài toán phân tích biểu cảm từ camera, mô hình FER không nhận trực tiếp toàn bộ khung hình video. Mỗi khung hình trước hết phải đi qua bước phát hiện và căn chỉnh khuôn mặt để xác định vùng mặt hợp lệ. Sau đó, vùng mặt đã được chuẩn hóa mới được đưa vào bộ phân loại biểu cảm. Vì vậy, việc lựa chọn mô hình cần được thực hiện theo chuỗi phụ thuộc:
+\begin{center}
+\textit{Khung hình video $\rightarrow$ detector/căn chỉnh khuôn mặt $\rightarrow$ mô hình FER $\rightarrow$ xác suất 7 lớp biểu cảm.}
+\end{center}
 
-Trong kịch bản camera giám sát thực tế, việc đưa ra kết luận về trải nghiệm của khách hàng chỉ dựa trên một khung hình đơn lẻ tiềm ẩn rủi ro rất cao. Khách hàng có thể chớp mắt, quay đầu hoặc nói chuyện, khiến biểu cảm trên từng khung hình biến đổi liên tục (ví dụ: đang cười nhưng khi nói miệng mở có thể bị nhận nhầm thành ngạc nhiên trong 1-2 frames). Hiện tượng dự đoán nhấp nháy này tạo ra các giá trị ngoại lai (outliers) và phá vỡ tính liên tục của dữ liệu thống kê.
+Nếu detector bỏ sót khuôn mặt, phát hiện sai vùng mặt hoặc căn chỉnh lệch, đầu vào của mô hình FER sẽ bị nhiễu và kết quả phân loại biểu cảm không còn đáng tin cậy. Do đó, trong đồ án này em không chỉ khảo sát mô hình FER mà còn cần đánh giá riêng bước phát hiện/căn chỉnh khuôn mặt, sau đó đánh giá tổ hợp detector và FER trong cùng điều kiện.
 
-\subsubsection*{2.3.2. Thuật toán làm mịn chuỗi thời gian bằng Trung bình trượt hàm mũ (EMA)}
-\addcontentsline{toc}{subsubsection}{\numberline{}2.3.2. Thuật toán làm mịn chuỗi thời gian bằng Trung bình trượt hàm mũ (EMA)}
+Việc đánh giá trong đồ án này được thực hiện bằng chương trình benchmark tự chạy. Chương trình trước hết lưu dự đoán của từng mẫu vào tệp CSV, sau đó đọc chính các tệp dự đoán này để tính Accuracy, Macro-F1, Detection Rate và các phân vị độ trễ. Bảng LaTeX và biểu đồ PNG được sinh tự động từ kết quả tính toán; em không nhập thủ công các giá trị trong bảng và không dùng số liệu công bố bên ngoài để xếp hạng.
 
-Để triệt tiêu nhiễu nhấp nháy và nắm bắt chính xác xu hướng cảm xúc thực của khách hàng trong suốt phiên tương tác, giải thuật làm mịn chuỗi thời gian bằng Trung bình trượt hàm mũ (Exponential Moving Average - EMA) được áp dụng trên vector xác suất 7 lớp. 
+Lần thực nghiệm có thể chạy lại hiện tại sử dụng CK+ Extended \cite{lucey2010ckplus}. Từ 920 ảnh xám $48 \times 48$ pixel, em chỉ lấy 182 mẫu thuộc hai phần \textit{PublicTest} và \textit{PrivateTest}, đồng thời loại lớp \textit{contempt} để thống nhất đầu ra bảy lớp. Vì CK+ trong lần thử này gồm các ảnh khuôn mặt đã được crop, ảnh được phóng lên $224 \times 224$ pixel trước khi chạy detector. Việc phóng ảnh chỉ nhằm tránh giới hạn kích thước đầu vào tối thiểu và không tạo thêm chi tiết khuôn mặt.
+
+Ở bước phát hiện khuôn mặt, em chạy OpenCV, MTCNN và RetinaFace trên cùng 182 mẫu, cùng máy và cùng quy trình đo thời gian. Kết quả do chương trình sinh ra được trình bày trong Bảng~\ref{tab:ckplus-detector-benchmark}.
+
+\begin{table}[H]
+    \centering
+    \caption{Kết quả benchmark detector do chương trình sinh ra trên 182 mẫu CK+}
+    \label{tab:ckplus-detector-benchmark}
+    \small
+    \resizebox{\textwidth}{!}{\input{../../fer-benchmark/outputs/detector_comparison.tex}}
+\end{table}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.82\textwidth]{../../fer-benchmark/outputs/detector_comparison.png}
+    \caption{So sánh độ trễ p95 của ba detector từ lần chạy benchmark}
+    \label{fig:ckplus-detector-benchmark}
+\end{figure}
+
+Cả ba detector đều phát hiện được khuôn mặt trong toàn bộ 182 ảnh đã crop, do đó Detection Rate và độ chính xác số lượng khuôn mặt đều bằng 1,0000. Khác biệt có ý nghĩa trong tập thử này nằm ở độ trễ p95: OpenCV đạt 24,61 ms, MTCNN đạt 356,58 ms và RetinaFace đạt 1119,50 ms. CK+ không có ảnh âm, tức ảnh không chứa khuôn mặt, nên giá trị False Positive bằng 0 trong bảng không được dùng để khẳng định khả năng chống phát hiện nhầm. Với phạm vi kiểm chứng hiện tại, em chọn OpenCV vì chất lượng phát hiện ngang hai detector còn lại nhưng có độ trễ thấp nhất.
+
+Bộ phân loại cảm xúc được chạy trong thực nghiệm là mạng CNN bảy lớp mà mô-đun \texttt{EmotionClient} của thư viện DeepFace nạp từ tệp trọng số \path{facial_expression_model_weights.h5}. DeepFace là thư viện tích hợp, không phải tên của mô hình. Khi bỏ qua detector và đưa trực tiếp 182 ảnh khuôn mặt CK+ vào mạng CNN này, chương trình đo được Accuracy bằng 0,6264, Macro-F1 bằng 0,3834 và độ trễ suy luận p95 bằng 3,68 ms. Vì lần chạy hiện tại mới có một bộ phân loại FER thực thi được, kết quả này chỉ là mốc kiểm chứng của mô hình đang tích hợp, chưa phải bảng so sánh nhiều mô hình FER.
+
+Để đo ảnh hưởng của bước phát hiện và căn chỉnh lên kết quả cuối, em tiếp tục ghép cùng mạng CNN bảy lớp với từng detector. Mỗi lỗi không trả ra khuôn mặt được tính là một mẫu không có kết quả, thay vì bị loại khỏi phép tính. Bảng~\ref{tab:ckplus-e2e-benchmark} và Hình~\ref{fig:ckplus-e2e-benchmark} đều được xuất trực tiếp từ lần chạy này.
+
+\begin{table}[H]
+    \centering
+    \caption{Kết quả benchmark end-to-end do chương trình sinh ra trên 182 mẫu CK+}
+    \label{tab:ckplus-e2e-benchmark}
+    \small
+    \resizebox{\textwidth}{!}{\input{../../fer-benchmark/outputs/end_to_end_comparison.tex}}
+\end{table}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../../fer-benchmark/outputs/end_to_end_comparison.png}
+    \caption{So sánh Macro-F1 end-to-end của các tổ hợp từ lần chạy benchmark}
+    \label{fig:ckplus-e2e-benchmark}
+\end{figure}
+
+Tổ hợp OpenCV và mạng CNN bảy lớp đạt Macro-F1 cao nhất trong ba tổ hợp, bằng 0,3328; Accuracy bằng 0,6099; tỷ lệ không có kết quả bằng 0 và độ trễ p95 bằng 29,27 ms. MTCNN đạt Macro-F1 0,2867 với p95 361,02 ms; RetinaFace đạt Macro-F1 0,3249 với p95 1126,42 ms. Vì vậy, em chọn OpenCV cho pipeline hiện tại trên cơ sở kết quả thực nghiệm này. Tuy nhiên, kết luận chỉ có hiệu lực đối với tập CK+ đã crop. Macro-F1 thấp hơn nhiều so với Accuracy do tập kiểm thử mất cân bằng mạnh, trong đó lớp \textit{neutral} chiếm 119/182 mẫu; đồng thời một số lớp như \textit{disgust} và \textit{sad} chưa được nhận dạng ổn định.
+
+Để kết luận mô hình phù hợp nhất cho camera cửa hàng, bước thực nghiệm tiếp theo vẫn phải bổ sung tập ảnh/video camera có nhãn, gồm cả ảnh không có khuôn mặt, mặt nhỏ, mặt nghiêng, che khuất, mờ và thay đổi ánh sáng; đồng thời chạy nhiều mô hình FER trên cùng vùng mặt do detector đã chọn tạo ra. Khi chưa có các tệp dự đoán đó, em không gắn kết luận ``tối ưu'' cho EfficientFace, DAN, POSTER++ hoặc ResEmoteNet. Quy tắc lựa chọn cuối cùng là loại các phương án không đạt ngưỡng Detection Rate và p95, sau đó ưu tiên Macro-F1 end-to-end; Accuracy chỉ dùng làm chỉ số bổ sung vì dữ liệu FER thường mất cân bằng lớp.
+
+\subsection*{2.3. Khó khăn khi xử lý chuỗi cảm xúc video và các phương pháp khắc phục}
+\addcontentsline{toc}{subsection}{\numberline{}2.3. Khó khăn khi xử lý chuỗi cảm xúc video và các phương pháp khắc phục}
+
+Ở phần trước, đầu ra của mô hình FER được mô tả trên từng ảnh hoặc từng khung hình đơn lẻ. Tuy nhiên, trong kịch bản video hoặc camera thời gian thực, hệ thống không xử lý một ảnh độc lập mà xử lý một chuỗi khung hình liên tục theo thời gian. Vì vậy, vấn đề chính không chỉ là mô hình dự đoán đúng trên một khung hình, mà còn là làm sao để chuỗi kết quả cảm xúc ổn định, ít bị nhiễu và có thể tổng hợp thành thông tin trải nghiệm có ý nghĩa.
+
+\subsubsection*{2.3.1. Kết quả FER không ổn định theo từng khung hình}
+\addcontentsline{toc}{subsubsection}{\numberline{}2.3.1. Khó khăn: kết quả FER không ổn định theo từng khung hình}
+
+Khi phân tích video, nếu mỗi khung hình được xử lý độc lập và nhãn có xác suất cao nhất được lấy trực tiếp làm kết quả cuối cùng, chuỗi cảm xúc có thể dao động liên tục. Ví dụ, một khách hàng đang có biểu cảm vui vẻ có thể bị nhận nhầm thành ngạc nhiên trong một vài khung hình khi đang nói chuyện, mở miệng hoặc quay đầu. Tương tự, ánh sáng thay đổi, khuôn mặt bị che khuất một phần, ảnh bị mờ hoặc góc nhìn nghiêng cũng có thể làm xác suất giữa các lớp biểu cảm thay đổi đột ngột.
+
+Hiện tượng này được gọi là nhấp nháy ở mức khung hình (Frame-level Flickering). Về mặt nghiệp vụ, nếu dùng trực tiếp kết quả từng khung hình để đánh giá trải nghiệm khách hàng, dashboard có thể hiển thị trạng thái thay đổi quá nhanh và dữ liệu tổng hợp có thể bị lệch bởi các dự đoán nhiễu ngắn hạn. Do đó, hệ thống cần cơ chế xử lý theo thời gian để giảm tác động của các biến động nhất thời. Dưới đây là một vài phương pháp thường được sử dụng để khắc phục vấn đề này
+
+\subsubsection*{2.3.2. Làm mịn kết quả ở mức khung hình bằng EMA}
+\addcontentsline{toc}{subsubsection}{\numberline{}2.3.2. Làm mịn kết quả ở mức khung hình bằng EMA}
+
+Một phương pháp khắc phục là không làm mịn trực tiếp nhãn cảm xúc, mà làm mịn vector xác suất đầu ra của mô hình FER. Trong đồ án, kỹ thuật Trung bình trượt hàm mũ (Exponential Moving Average - EMA) được áp dụng như một bước hậu xử lý sau mô hình nhận dạng biểu cảm. EMA không thay thế mô hình FER, mà giúp chuỗi xác suất đầu ra ổn định hơn trước khi chọn biểu cảm chủ đạo.
 
 Gọi $\bm{p}_t = [p_t^{(1)}, \dots, p_t^{(7)}]^T$ là vector xác suất đầu ra của mô hình tại khung hình thứ $t$, và $\bm{s}_t = [s_t^{(1)}, \dots, s_t^{(7)}]^T$ là vector xác suất đã làm mịn. Công thức cập nhật đệ quy được định nghĩa:
 \begin{equation}
 \bm{s}_t = \alpha \cdot \bm{p}_t + (1 - \alpha) \cdot \bm{s}_{t-1}
 \end{equation}
-Trong đó $\alpha \in (0, 1]$ là hệ số làm mịn (Smoothing Factor). Khi $\alpha \approx 0.3 - 0.4$, hệ thống vừa phản ứng nhanh với các thay đổi cảm xúc bền vững của khách hàng, vừa triệt tiêu hiệu quả các xung nhiễu ngắn hạn. Biểu cảm chủ đạo của phiên được xác định dựa trên vector $\bm{s}_t$ sau khi đã tích lũy đủ số lượng khung hình hợp lệ tối thiểu ($N_{\text{frames}} \ge N_{\text{min}}$).
+Trong đó $\alpha \in (0, 1]$ là hệ số làm mịn (Smoothing Factor). Nếu $\alpha$ lớn, kết quả phản ứng nhanh hơn với khung hình mới nhưng dễ bị ảnh hưởng bởi nhiễu tức thời. Nếu $\alpha$ nhỏ, kết quả ổn định hơn nhưng phản ứng chậm hơn khi biểu cảm thật sự thay đổi. Với kịch bản camera thời gian thực, giá trị $\alpha$ thường được chọn ở mức trung bình để cân bằng giữa độ ổn định và khả năng phản ứng.
 
-\subsubsection*{2.3.3. Phân tích chuyển dịch biểu cảm (Expression Transitions)}
-\addcontentsline{toc}{subsubsection}{\numberline{}2.3.3. Phân tích chuyển dịch biểu cảm (Expression Transitions)}
+Sau khi có vector $\bm{s}_t$, biểu cảm chủ đạo tại thời điểm $t$ được xác định bằng lớp có xác suất đã làm mịn lớn nhất. Ngoài ra, hệ thống chỉ nên tổng hợp phiên khi đã có đủ số lượng khung hình hợp lệ tối thiểu ($N_{\text{frames}} \ge N_{\text{min}}$), nhằm tránh kết luận từ quá ít dữ liệu quan sát.
 
-Bên cạnh việc ghi nhận trạng thái tĩnh, sự biến đổi cảm xúc theo dòng thời gian (ví dụ từ trạng thái trung tính/bối rối sang vui vẻ, hoặc từ trung tính sang khó chịu) mang lại giá trị phân tích nghiệp vụ to lớn. Bằng cách theo dõi trạng thái cảm xúc chủ đạo sau làm mịn qua các cửa sổ thời gian liên tiếp, hệ thống xây dựng đồ thị chuyển dịch cảm xúc (\textit{Expression Transition Matrix}):
+\subsubsection*{2.3.3. Tổng hợp kết quả ở mức phiên trải nghiệm}
+\addcontentsline{toc}{subsubsection}{\numberline{}2.3.3. Tổng hợp kết quả ở mức phiên trải nghiệm}
+
+Sau khi chuỗi xác suất đã được làm mịn, hệ thống cần tổng hợp các kết quả rời rạc thành dữ liệu cấp phiên. Một phiên trải nghiệm có thể được hiểu là khoảng thời gian khách hàng xuất hiện tại một khu vực hoặc một điểm chạm cụ thể, chẳng hạn khu vực chờ, quầy tư vấn hoặc quầy thanh toán. Thay vì lưu một kết luận riêng lẻ cho từng khung hình, hệ thống tổng hợp các kết quả đã làm mịn để xác định biểu cảm chủ đạo, tỷ lệ biểu cảm tích cực/tiêu cực và xu hướng thay đổi cảm xúc trong phiên.
+
+Bên cạnh biểu cảm chủ đạo, sự chuyển dịch cảm xúc theo thời gian cũng là thông tin quan trọng. Ví dụ, chuỗi kết quả có thể chuyển từ trung tính sang vui vẻ sau khi khách hàng được tư vấn, hoặc từ trung tính sang căng thẳng tại khu vực chờ nếu thời gian chờ kéo dài. Bằng cách theo dõi trạng thái cảm xúc chủ đạo sau làm mịn qua các cửa sổ thời gian liên tiếp, hệ thống có thể xây dựng ma trận chuyển dịch cảm xúc (\textit{Expression Transition Matrix}):
 \begin{equation}
 T_{i \to j} = P(\text{State}_{t+1} = j \mid \text{State}_t = i)
 \end{equation}
-Một tỷ lệ chuyển dịch cao từ $\text{Neutral} \to \text{Happy}$ tại quầy tư vấn chứng minh nhân viên đã giải thích thuyết phục; ngược lại, chuyển dịch $\text{Neutral} \to \text{Angry}$ tại quầy thu ngân là tín hiệu cảnh báo quy trình thanh toán gặp trục trặc.
+Trong đó $T_{i \to j}$ biểu diễn xác suất trạng thái cảm xúc chuyển từ lớp $i$ ở thời điểm hiện tại sang lớp $j$ ở thời điểm kế tiếp. Một tỷ lệ chuyển dịch cao từ $\text{Neutral} \to \text{Happy}$ tại quầy tư vấn có thể gợi ý trải nghiệm tư vấn tích cực hơn, trong khi chuyển dịch từ $\text{Neutral} \to \text{Angry}$ hoặc $\text{Neutral} \to \text{Sad}$ tại quầy thu ngân có thể là tín hiệu cần kiểm tra lại quy trình phục vụ. Các kết luận này không nên được hiểu là đánh giá tuyệt đối về tâm lý khách hàng, mà là chỉ báo thống kê hỗ trợ phân tích trải nghiệm.
 
 \subsection*{2.4. Lý thuyết quản trị trải nghiệm khách hàng (Customer Experience - CX) trong bán lẻ}
 \addcontentsline{toc}{subsection}{\numberline{}2.4. Lý thuyết quản trị trải nghiệm khách hàng (Customer Experience - CX) trong bán lẻ}
 
-\subsubsection*{2.4.1. Mô hình hành trình khách hàng đa điểm chạm (Customer Journey Touchpoints)}
+Sau khi hệ thống đã có thể nhận dạng biểu cảm và xử lý chuỗi kết quả theo thời gian, bước tiếp theo là chuyển các kết quả kỹ thuật đó thành thông tin nghiệp vụ có ý nghĩa. Đối với bài toán phân tích trải nghiệm khách hàng tại cửa hàng bán lẻ, biểu cảm khuôn mặt không nên được xem như kết luận tuyệt đối về tâm lý khách hàng, mà được sử dụng như một tín hiệu quan sát để hỗ trợ đánh giá trải nghiệm tại từng điểm chạm. Vì vậy, trong phần này, em sẽ trình bày cơ sở lý thuyết về quản trị trải nghiệm khách hàng, mô hình hành trình khách hàng trong cửa hàng, cách suy luận trạng thái trải nghiệm từ nhiều tín hiệu và các chỉ số định lượng phục vụ cho việc  xây dựng dashboard CRM.
+
+\subsubsection*{2.4.1. Mô phỏng hành trình khách hàng đa điểm chạm (Customer Journey Touchpoints)}
 \addcontentsline{toc}{subsubsection}{\numberline{}2.4.1. Mô hình hành trình khách hàng đa điểm chạm (Customer Journey Touchpoints)}
 
-Trong bán lẻ hiện đại, hành trình của một khách hàng trong cửa hàng được chia thành chuỗi các điểm chạm không gian liên tiếp:
+Trong cửa hàng bán lẻ, khách hàng thường đi qua nhiều khu vực khác nhau trong suốt quá trình mua sắm. Có thể mô tả hành trình này dưới dạng chuỗi các điểm chạm liên tiếp:
 \begin{center}
 $\text{Cổng vào} \xrightarrow{\text{Zone 1}} \text{Khu chờ} \xrightarrow{\text{Zone 2}} \text{Quầy tư vấn} \xrightarrow{\text{Zone 3}} \text{Khu sản phẩm} \xrightarrow{\text{Zone 4}} \text{Quầy thanh toán} \xrightarrow{\text{Zone 5}} \text{Cổng ra}$
 \end{center}
-Mỗi khu vực có chức năng nghiệp vụ riêng biệt và thời gian dừng chân (Dwell Time) dự kiến khác nhau. Việc gắn thẻ sự kiện cảm xúc theo từng khu vực cho phép doanh nghiệp đánh giá chính xác chất lượng vận hành của từng bộ phận.
+Mỗi khu vực đảm nhiệm một vai trò khác nhau trong quá trình phục vụ khách hàng, nên thời gian khách hàng dừng lại ở từng khu vực cũng không giống nhau. Khi kết quả cảm xúc được gắn với khu vực tương ứng, doanh nghiệp có thêm cơ sở để đánh giá chất lượng trải nghiệm tại từng điểm chạm, thay vì chỉ nhìn vào số liệu tổng hợp của toàn cửa hàng.
 
 \subsubsection*{2.4.2. Suy luận trạng thái trải nghiệm bán lẻ đa tín hiệu (Inferred Experience States)}
 \addcontentsline{toc}{subsubsection}{\numberline{}2.4.2. Suy luận trạng thái trải nghiệm bán lẻ đa tín hiệu (Inferred Experience States)}
 
-Để chuyển đổi các nhãn biểu cảm thuần túy thành thông tin nghiệp vụ CRM có thể hành động, hệ thống định nghĩa 6 trạng thái trải nghiệm được suy luận từ sự kết hợp của: \textit{Xác suất 7 lớp FER + Chuỗi thời gian + Thời gian dừng chân + Khu vực + Sự kiện đơn hàng}:
+Để chuyển đổi các nhãn biểu cảm thuần túy thành thông tin nghiệp vụ CRM có thể hành động, em không sử dụng trực tiếp một nhãn FER đơn lẻ để kết luận trạng thái trải nghiệm của khách hàng. Lý do là biểu cảm tại một khung hình có thể bị ảnh hưởng bởi nhiễu ánh sáng, góc quay, chuyển động khuôn mặt hoặc phản ứng nhất thời. Vì vậy, em biểu diễn logic suy luận trạng thái trải nghiệm dưới dạng một hàm tổng hợp nhiều tín hiệu:
+\begin{equation}
+\text{ExperienceState} = f(\bm{p}^{\text{FER}}_t + \bm{s}_{1:T} + D + Z + O)
+\end{equation}
+Trong đó $\bm{p}^{\text{FER}}_t$ là vector xác suất 7 lớp biểu cảm tại thời điểm $t$; $\bm{s}_{1:T}$ là chuỗi xác suất đã được làm mịn trong toàn bộ phiên; $D$ là thời gian khách hàng dừng tại khu vực quan sát; $Z$ là khu vực hoặc điểm chạm trong cửa hàng; và $O$ là tín hiệu liên quan đến sự kiện đơn hàng nếu có. Dấu cộng trong biểu thức thể hiện việc tổng hợp các nhóm tín hiệu đầu vào trước khi đưa vào hàm suy luận $f$. Cách mô hình hóa này được đưa ra nhằm đặt kết quả FER vào đúng ngữ cảnh thời gian và nghiệp vụ, từ đó giảm rủi ro kết luận sai do một dự đoán tức thời. Trong đồ án, hàm $f$ được hiện thực bằng tập luật phân loại để xác định 6 trạng thái trải nghiệm như sau:
 \begin{itemize}
     \item \textbf{\texttt{DELIGHTED} (Rất hài lòng):} Xác suất $p_{\text{happy}} \ge 0.55$ duy trì ổn định.
     \item \textbf{\texttt{ENGAGED} (Hứng thú, chú ý cao):} Tương tác tập trung tại khu vực sản phẩm hoặc quầy tư vấn với biểu cảm tích cực/tập trung kéo dài.
     \item \textbf{\texttt{CONFUSED} (Phân vân, bối rối):} Xác suất $p_{\text{surprise}}$ hoặc $p_{\text{fear}} \ge 0.40$ khi xem bảng giá hoặc nghe tư vấn, thể hiện khách hàng cần hỗ trợ giải thích thêm.
     \item \textbf{\texttt{IMPATIENT} (Sốt ruột, mất kiên nhẫn):} Thời gian chờ đợi tại quầy thu ngân hoặc khu vực chờ vượt ngưỡng tiêu chuẩn kết hợp với biểu cảm trung tính giảm dần hoặc có tín hiệu căng thẳng.
     \item \textbf{\texttt{DISSATISFIED} (Không hài lòng):} Tỷ lệ $\max(p_{\text{angry}}, p_{\text{disgust}}, p_{\text{sad}}) \ge 0.45$.
-    \item \textbf{\texttt{NEUTRAL} (Bình thường):} Khách hàng ở trạng thái cân bằng, không có phản ứng cảm xúc đặc biệt.
+    \item \textbf{\texttt{NEUTRAL} (Bình thường):} Khách hàng ở trạng thái bình thường, không có phản ứng cảm xúc đặc biệt.
 \end{itemize}
 
 \subsubsection*{2.4.3. Các chỉ số đo lường hiệu quả trải nghiệm (Experience Metrics)}

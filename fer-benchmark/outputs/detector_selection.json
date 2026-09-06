@@ -1,0 +1,112 @@
+{
+  "dataset": "CKPlus-7-reproducibility",
+  "decision_rule": "Require detection-rate and p95 gates, reject false positives on no-face frames, then maximize detection rate and exact-count accuracy.",
+  "max_p95_ms": 5000.0,
+  "min_detection_rate": 0.0,
+  "selected_detector": "opencv",
+  "rationale": "opencv satisfies the detector quality gates and has the strongest detection score among eligible detectors on CKPlus-7-reproducibility.",
+  "detectors": [
+    {
+      "detector": "opencv",
+      "dataset": "CKPlus-7-reproducibility",
+      "sample_count": 182,
+      "positive_frames": 182,
+      "no_face_frames": 0,
+      "detection_rate": 1.0,
+      "miss_rate": 0.0,
+      "false_positive_rate": 0.0,
+      "exact_count_accuracy": 1.0,
+      "invalid_crop_rate": 0.0,
+      "condition_report": {
+        "ckplus_cropped": {
+          "samples": 182,
+          "expected_positive": 182,
+          "detected_positive": 182,
+          "detection_rate": 1.0
+        },
+        "upscaled_224": {
+          "samples": 182,
+          "expected_positive": 182,
+          "detected_positive": 182,
+          "detection_rate": 1.0
+        }
+      },
+      "latency_ms": {
+        "count": 182,
+        "mean": 20.447450302197797,
+        "p50": 21.602833500000003,
+        "p95": 24.61241315,
+        "p99": 26.23743319
+      },
+      "eligible": true
+    },
+    {
+      "detector": "mtcnn",
+      "dataset": "CKPlus-7-reproducibility",
+      "sample_count": 182,
+      "positive_frames": 182,
+      "no_face_frames": 0,
+      "detection_rate": 1.0,
+      "miss_rate": 0.0,
+      "false_positive_rate": 0.0,
+      "exact_count_accuracy": 1.0,
+      "invalid_crop_rate": 0.0,
+      "condition_report": {
+        "ckplus_cropped": {
+          "samples": 182,
+          "expected_positive": 182,
+          "detected_positive": 182,
+          "detection_rate": 1.0
+        },
+        "upscaled_224": {
+          "samples": 182,
+          "expected_positive": 182,
+          "detected_positive": 182,
+          "detection_rate": 1.0
+        }
+      },
+      "latency_ms": {
+        "count": 182,
+        "mean": 342.57546840109865,
+        "p50": 341.00495850000004,
+        "p95": 356.57632499999994,
+        "p99": 422.14691825
+      },
+      "eligible": true
+    },
+    {
+      "detector": "retinaface",
+      "dataset": "CKPlus-7-reproducibility",
+      "sample_count": 182,
+      "positive_frames": 182,
+      "no_face_frames": 0,
+      "detection_rate": 1.0,
+      "miss_rate": 0.0,
+      "false_positive_rate": 0.0,
+      "exact_count_accuracy": 1.0,
+      "invalid_crop_rate": 0.0,
+      "condition_report": {
+        "ckplus_cropped": {
+          "samples": 182,
+          "expected_positive": 182,
+          "detected_positive": 182,
+          "detection_rate": 1.0
+        },
+        "upscaled_224": {
+          "samples": 182,
+          "expected_positive": 182,
+          "detected_positive": 182,
+          "detection_rate": 1.0
+        }
+      },
+      "latency_ms": {
+        "count": 182,
+        "mean": 911.0157653131872,
+        "p50": 866.8692495,
+        "p95": 1119.5038312499998,
+        "p99": 1202.74357071
+      },
+      "eligible": true
+    }
+  ]
+}

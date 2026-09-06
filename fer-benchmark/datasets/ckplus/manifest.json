@@ -1,0 +1,27 @@
+{
+  "name": "CK+ Extended (Kaggle repackaging)",
+  "file": "ckextended.csv",
+  "source_url": "https://www.kaggle.com/datasets/davilsena/ckdataset",
+  "downloaded_at": "2026-09-06",
+  "license_as_listed_by_distributor": "CC0: Public Domain",
+  "sha256": "0ad22aa52886ea0bee18111f3fda97265845c8098e90165a776ced34b0e1f659",
+  "image_format": "2304 grayscale pixel values per row (48x48)",
+  "rows_total": 920,
+  "label_map": {
+    "0": "angry",
+    "1": "disgust",
+    "2": "fear",
+    "3": "happy",
+    "4": "sad",
+    "5": "surprise",
+    "6": "neutral",
+    "7": "contempt"
+  },
+  "benchmark_protocol": {
+    "included_usage": ["PublicTest", "PrivateTest"],
+    "excluded_labels": ["contempt"],
+    "expected_samples": 182,
+    "purpose": "Supplementary seven-class reproducibility check; not a substitute for in-the-wild retail data."
+  },
+  "provenance_note": "The CSV is a third-party Kaggle repackaging. The project does not claim that its split is an official CK+ protocol. The original Extended Cohn-Kanade dataset is described by Lucey et al. (2010)."
+}

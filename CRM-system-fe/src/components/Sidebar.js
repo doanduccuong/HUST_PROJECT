@@ -116,6 +116,18 @@ export default function Sidebar({ activeTab, onTabChange, userRole }) {
               </button>
               {canManage && (
                 <button
+                  onClick={() => onTabChange("experienceCapture")}
+                  className={`w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                    activeTab === "experienceCapture"
+                      ? "text-blue-500 font-semibold"
+                      : "text-slate-500 hover:text-slate-300"
+                  }`}
+                >
+                  Video/Webcam Realtime
+                </button>
+              )}
+              {canManage && (
+                <button
                   onClick={() => onTabChange("faceSearch")}
                   className={`w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors ${
                     activeTab === "faceSearch"

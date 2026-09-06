@@ -1,0 +1,2 @@
+model,dataset,sample_count,accuracy,macro_f1,p95_ms,eligible,selected
+CNN FER 7-class,CKPlus-7-reproducibility,182,0.6263736263736264,0.3833696417808567,3.68123785,True,True

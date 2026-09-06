@@ -38,6 +38,13 @@ ai:
     review-distance: ${FACE_REVIEW_DISTANCE:0.40}
     minimum-gap: ${FACE_MINIMUM_GAP:0.03}
 
+experience:
+  ema-alpha: ${EXPERIENCE_EMA_ALPHA:0.35}
+  minimum-accepted-frames: ${EXPERIENCE_MINIMUM_ACCEPTED_FRAMES:3}
+  transition-dwell-seconds: ${EXPERIENCE_TRANSITION_DWELL_SECONDS:2}
+  engaged-dwell-seconds: ${EXPERIENCE_ENGAGED_DWELL_SECONDS:5}
+  impatient-dwell-seconds: ${EXPERIENCE_IMPATIENT_DWELL_SECONDS:8}
+
 app:
   demo:
     enabled: ${DEMO_DATA_ENABLED:false}

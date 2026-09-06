@@ -1,0 +1,144 @@
+{
+  "dataset": "CKPlus-7-reproducibility",
+  "decision_rule": "Filter by p95 latency, then maximize Macro-F1; use Accuracy and lower p95 as tie-breakers.",
+  "max_p95_ms": 200.0,
+  "selected_model": "CNN FER 7-class",
+  "rationale": "CNN FER 7-class satisfies p95 <= 200.00 ms and has the highest Macro-F1 (0.3834) among eligible models.",
+  "models": [
+    {
+      "model": "CNN FER 7-class",
+      "dataset": "CKPlus-7-reproducibility",
+      "sample_count": 182,
+      "accuracy": 0.6263736263736264,
+      "macro_precision": 0.48925176491340483,
+      "macro_recall": 0.44413098572762433,
+      "macro_f1": 0.3833696417808567,
+      "labels": [
+        "angry",
+        "disgust",
+        "fear",
+        "happy",
+        "sad",
+        "surprise",
+        "neutral"
+      ],
+      "confusion_matrix": [
+        [
+          2,
+          0,
+          2,
+          0,
+          1,
+          0,
+          4
+        ],
+        [
+          6,
+          1,
+          1,
+          1,
+          0,
+          0,
+          3
+        ],
+        [
+          0,
+          0,
+          2,
+          2,
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          14,
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          2,
+          0,
+          0,
+          0,
+          3
+        ],
+        [
+          0,
+          0,
+          2,
+          0,
+          1,
+          12,
+          2
+        ],
+        [
+          2,
+          0,
+          8,
+          14,
+          10,
+          2,
+          83
+        ]
+      ],
+      "per_class": {
+        "angry": {
+          "precision": 0.18181818181818182,
+          "recall": 0.2222222222222222,
+          "f1": 0.19999999999999998,
+          "support": 9
+        },
+        "disgust": {
+          "precision": 1.0,
+          "recall": 0.08333333333333333,
+          "f1": 0.15384615384615385,
+          "support": 12
+        },
+        "fear": {
+          "precision": 0.11764705882352941,
+          "recall": 0.4,
+          "f1": 0.1818181818181818,
+          "support": 5
+        },
+        "happy": {
+          "precision": 0.45161290322580644,
+          "recall": 1.0,
+          "f1": 0.6222222222222222,
+          "support": 14
+        },
+        "sad": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 6
+        },
+        "surprise": {
+          "precision": 0.8,
+          "recall": 0.7058823529411765,
+          "f1": 0.7500000000000001,
+          "support": 17
+        },
+        "neutral": {
+          "precision": 0.8736842105263158,
+          "recall": 0.6974789915966386,
+          "f1": 0.7757009345794393,
+          "support": 119
+        }
+      },
+      "latency_ms": {
+        "count": 182,
+        "mean": 3.2845865274725274,
+        "p50": 3.257812,
+        "p95": 3.68123785,
+        "p99": 3.78973673
+      },
+      "eligible": true
+    }
+  ]
+}

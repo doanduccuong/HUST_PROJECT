@@ -12,6 +12,7 @@ import com.tms.repository.SaleOrderRepository;
 import com.tms.api.service.FaceRecognitionService;
 import com.tms.api.dto.dashboard.SalesPerformanceResponse;
 import com.tms.api.service.SalesPerformanceService;
+import com.tms.api.dto.experience.ExperienceDataMode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -44,7 +45,8 @@ public class DashboardController {
 
     @GetMapping("/stats")
     public ResponseEntity<DashboardStatsResponse> getStats(
-            @org.springframework.web.bind.annotation.RequestParam(value = "date", required = false) String date) {
+            @org.springframework.web.bind.annotation.RequestParam(value = "date", required = false) String date,
+            @org.springframework.web.bind.annotation.RequestParam(value = "dataMode", defaultValue = "REAL_ONLY") ExperienceDataMode dataMode) {
         long totalMembers = customerRepository.count();
         long totalOrders = saleOrderRepository.count();
         double totalRevenue = saleOrderRepository.sumPaidRevenue();
@@ -147,13 +149,13 @@ public class DashboardController {
         String pythonStatus = faceRecognitionService.checkPythonHealth() ? "Active" : "Pending Java Connection";
 
         // Live Retail Emotion Analytics calculation
-        String sessionDateClause = "";
-        String eventDateClause = "";
+        String sessionDateClause = " WHERE " + dataMode.sessionPredicate(null);
+        String eventDateClause = " WHERE " + dataMode.eventPredicate(null);
         List<Object> sessionParams = new ArrayList<>();
         List<Object> eventParams = new ArrayList<>();
         if (date != null && !date.isEmpty()) {
-            sessionDateClause = " WHERE started_at::date = ?::date ";
-            eventDateClause = " WHERE observed_at::date = ?::date ";
+            sessionDateClause += " AND started_at::date = ?::date ";
+            eventDateClause += " AND observed_at::date = ?::date ";
             sessionParams.add(date);
             eventParams.add(date);
         }
@@ -192,24 +194,24 @@ public class DashboardController {
             // fallback
         }
 
-        double cbi = totalEvents > 0 ? (confused * 100.0 / totalEvents) : 7.0;
-        double ibi = totalEvents > 0 ? (impatient * 100.0 / totalEvents) : 6.0;
-        double dri = totalEvents > 0 ? (dissatisfied * 100.0 / totalEvents) : 3.1;
-        double edc = (delighted + engaged) > 0 ? (delighted * 100.0 / (delighted + engaged)) : 65.5;
+        double cbi = totalEvents > 0 ? (confused * 100.0 / totalEvents) : 0.0;
+        double ibi = totalEvents > 0 ? (impatient * 100.0 / totalEvents) : 0.0;
+        double dri = totalEvents > 0 ? (dissatisfied * 100.0 / totalEvents) : 0.0;
+        double edc = (delighted + engaged) > 0 ? (delighted * 100.0 / (delighted + engaged)) : 0.0;
 
         // Shift analytics
         long morningVisitors = 0, morningImpatient = 0, morningDelight = 0, morningTotalEvents = 0;
         long eveningVisitors = 0, eveningImpatient = 0, eveningDelight = 0, eveningTotalEvents = 0;
         try {
-            String sqlMv = "SELECT COUNT(DISTINCT customer_id) FROM experience_sessions WHERE EXTRACT(HOUR FROM started_at) >= 8 AND EXTRACT(HOUR FROM started_at) < 15";
-            String sqlMi = "SELECT COUNT(*) FROM experience_state_events WHERE EXTRACT(HOUR FROM observed_at) >= 8 AND EXTRACT(HOUR FROM observed_at) < 15 AND experience_state = 'IMPATIENT'";
-            String sqlMd = "SELECT COUNT(*) FROM experience_state_events WHERE EXTRACT(HOUR FROM observed_at) >= 8 AND EXTRACT(HOUR FROM observed_at) < 15 AND experience_state = 'DELIGHTED'";
-            String sqlMte = "SELECT COUNT(*) FROM experience_state_events WHERE EXTRACT(HOUR FROM observed_at) >= 8 AND EXTRACT(HOUR FROM observed_at) < 15";
+            String sqlMv = "SELECT COUNT(DISTINCT customer_id) FROM experience_sessions WHERE " + dataMode.sessionPredicate(null) + " AND EXTRACT(HOUR FROM started_at) >= 8 AND EXTRACT(HOUR FROM started_at) < 15";
+            String sqlMi = "SELECT COUNT(*) FROM experience_state_events WHERE " + dataMode.eventPredicate(null) + " AND EXTRACT(HOUR FROM observed_at) >= 8 AND EXTRACT(HOUR FROM observed_at) < 15 AND experience_state = 'IMPATIENT'";
+            String sqlMd = "SELECT COUNT(*) FROM experience_state_events WHERE " + dataMode.eventPredicate(null) + " AND EXTRACT(HOUR FROM observed_at) >= 8 AND EXTRACT(HOUR FROM observed_at) < 15 AND experience_state = 'DELIGHTED'";
+            String sqlMte = "SELECT COUNT(*) FROM experience_state_events WHERE " + dataMode.eventPredicate(null) + " AND EXTRACT(HOUR FROM observed_at) >= 8 AND EXTRACT(HOUR FROM observed_at) < 15";
 
-            String sqlEv = "SELECT COUNT(DISTINCT customer_id) FROM experience_sessions WHERE EXTRACT(HOUR FROM started_at) >= 15 AND EXTRACT(HOUR FROM started_at) < 22";
-            String sqlEi = "SELECT COUNT(*) FROM experience_state_events WHERE EXTRACT(HOUR FROM observed_at) >= 15 AND EXTRACT(HOUR FROM observed_at) < 22 AND experience_state = 'IMPATIENT'";
-            String sqlEd = "SELECT COUNT(*) FROM experience_state_events WHERE EXTRACT(HOUR FROM observed_at) >= 15 AND EXTRACT(HOUR FROM observed_at) < 22 AND experience_state = 'DELIGHTED'";
-            String sqlEte = "SELECT COUNT(*) FROM experience_state_events WHERE EXTRACT(HOUR FROM observed_at) >= 15 AND EXTRACT(HOUR FROM observed_at) < 22";
+            String sqlEv = "SELECT COUNT(DISTINCT customer_id) FROM experience_sessions WHERE " + dataMode.sessionPredicate(null) + " AND EXTRACT(HOUR FROM started_at) >= 15 AND EXTRACT(HOUR FROM started_at) < 22";
+            String sqlEi = "SELECT COUNT(*) FROM experience_state_events WHERE " + dataMode.eventPredicate(null) + " AND EXTRACT(HOUR FROM observed_at) >= 15 AND EXTRACT(HOUR FROM observed_at) < 22 AND experience_state = 'IMPATIENT'";
+            String sqlEd = "SELECT COUNT(*) FROM experience_state_events WHERE " + dataMode.eventPredicate(null) + " AND EXTRACT(HOUR FROM observed_at) >= 15 AND EXTRACT(HOUR FROM observed_at) < 22 AND experience_state = 'DELIGHTED'";
+            String sqlEte = "SELECT COUNT(*) FROM experience_state_events WHERE " + dataMode.eventPredicate(null) + " AND EXTRACT(HOUR FROM observed_at) >= 15 AND EXTRACT(HOUR FROM observed_at) < 22";
 
             List<Object> dateParams = new ArrayList<>();
             if (date != null && !date.isEmpty()) {
@@ -251,13 +253,13 @@ public class DashboardController {
             // fallback
         }
 
-        double techDeskIbi = 18.2;
-        double mobileZoneCbi = 14.5;
+        double techDeskIbi = 0.0;
+        double mobileZoneCbi = 0.0;
         try {
-            String sqlTdTotal = "SELECT COUNT(*) FROM experience_state_events WHERE zone = 'CHECKOUT'";
-            String sqlTdImp = "SELECT COUNT(*) FROM experience_state_events WHERE zone = 'CHECKOUT' AND experience_state = 'IMPATIENT'";
-            String sqlMzTotal = "SELECT COUNT(*) FROM experience_state_events WHERE zone = 'PRODUCT' OR zone = 'CONSULTING'";
-            String sqlMzConf = "SELECT COUNT(*) FROM experience_state_events WHERE (zone = 'PRODUCT' OR zone = 'CONSULTING') AND experience_state = 'CONFUSED'";
+            String sqlTdTotal = "SELECT COUNT(*) FROM experience_state_events WHERE " + dataMode.eventPredicate(null) + " AND zone = 'CHECKOUT'";
+            String sqlTdImp = "SELECT COUNT(*) FROM experience_state_events WHERE " + dataMode.eventPredicate(null) + " AND zone = 'CHECKOUT' AND experience_state = 'IMPATIENT'";
+            String sqlMzTotal = "SELECT COUNT(*) FROM experience_state_events WHERE " + dataMode.eventPredicate(null) + " AND (zone = 'PRODUCT' OR zone = 'CONSULTING')";
+            String sqlMzConf = "SELECT COUNT(*) FROM experience_state_events WHERE " + dataMode.eventPredicate(null) + " AND (zone = 'PRODUCT' OR zone = 'CONSULTING') AND experience_state = 'CONFUSED'";
 
             List<Object> dateParams = new ArrayList<>();
             if (date != null && !date.isEmpty()) {
@@ -284,21 +286,22 @@ public class DashboardController {
         }
 
         Map<String, Object> retailAnalytics = new java.util.LinkedHashMap<>();
-        retailAnalytics.put("totalVisitors", totalVisitorsCount > 0 ? totalVisitorsCount : 2);
+        retailAnalytics.put("dataMode", dataMode.name());
+        retailAnalytics.put("totalVisitors", totalVisitorsCount);
         retailAnalytics.put("cbi", cbi);
         retailAnalytics.put("ibi", ibi);
         retailAnalytics.put("dri", dri);
         retailAnalytics.put("edc", edc);
-        retailAnalytics.put("totalEvents", totalEvents > 0 ? totalEvents : 1273);
+        retailAnalytics.put("totalEvents", totalEvents);
 
         Map<String, Object> emotionsMap = new java.util.LinkedHashMap<>();
-        long finalTotalEvents = totalEvents > 0 ? totalEvents : 1273;
-        emotionsMap.put("delighted", Map.of("pct", totalEvents > 0 ? Math.round(delighted * 100.0 / finalTotalEvents) : 45, "val", totalEvents > 0 ? delighted : 572));
-        emotionsMap.put("engaged", Map.of("pct", totalEvents > 0 ? Math.round(engaged * 100.0 / finalTotalEvents) : 28, "val", totalEvents > 0 ? engaged : 356));
-        emotionsMap.put("neutral", Map.of("pct", totalEvents > 0 ? Math.round(neutral * 100.0 / finalTotalEvents) : 11, "val", totalEvents > 0 ? neutral : 140));
-        emotionsMap.put("confused", Map.of("pct", totalEvents > 0 ? Math.round(confused * 100.0 / finalTotalEvents) : 7, "val", totalEvents > 0 ? confused : 89));
-        emotionsMap.put("impatient", Map.of("pct", totalEvents > 0 ? Math.round(impatient * 100.0 / finalTotalEvents) : 6, "val", totalEvents > 0 ? impatient : 76));
-        emotionsMap.put("dissatisfied", Map.of("pct", totalEvents > 0 ? Math.round(dissatisfied * 100.0 / finalTotalEvents) : 3, "val", totalEvents > 0 ? dissatisfied : 40));
+        long finalTotalEvents = totalEvents;
+        emotionsMap.put("delighted", Map.of("pct", totalEvents > 0 ? Math.round(delighted * 100.0 / finalTotalEvents) : 0, "val", delighted));
+        emotionsMap.put("engaged", Map.of("pct", totalEvents > 0 ? Math.round(engaged * 100.0 / finalTotalEvents) : 0, "val", engaged));
+        emotionsMap.put("neutral", Map.of("pct", totalEvents > 0 ? Math.round(neutral * 100.0 / finalTotalEvents) : 0, "val", neutral));
+        emotionsMap.put("confused", Map.of("pct", totalEvents > 0 ? Math.round(confused * 100.0 / finalTotalEvents) : 0, "val", confused));
+        emotionsMap.put("impatient", Map.of("pct", totalEvents > 0 ? Math.round(impatient * 100.0 / finalTotalEvents) : 0, "val", impatient));
+        emotionsMap.put("dissatisfied", Map.of("pct", totalEvents > 0 ? Math.round(dissatisfied * 100.0 / finalTotalEvents) : 0, "val", dissatisfied));
         retailAnalytics.put("emotions", emotionsMap);
 
         double morningCapacity = morningVisitors > 0 ? (morningVisitors * 100.0 / 5.0) : 0.0;

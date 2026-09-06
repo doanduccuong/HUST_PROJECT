@@ -13,6 +13,7 @@ import FaceSearchView from "../components/FaceSearchView";
 import SalesPerformanceView from "../components/SalesPerformanceView";
 import OfferCatalogView from "../components/OfferCatalogView";
 import ExperienceLogsView from "../components/ExperienceLogsView";
+import ExperienceCaptureView from "../components/ExperienceCaptureView";
 
 import { useCrmViewModel } from "../viewmodels/useCrmViewModel";
 import { useCustomerViewModel } from "../viewmodels/useCustomerViewModel";
@@ -60,6 +61,8 @@ export default function Home() {
             offerCatalogVm={offerCatalogVm}
           />
         );
+      case "experienceCapture":
+        return <ExperienceCaptureView />;
       case "cdrs":
         return <CdrsView cdrs={crmVm.cdrs} />;
       case "members":

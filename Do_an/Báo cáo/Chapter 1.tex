@@ -12,12 +12,12 @@ Trong kỷ nguyên chuyển đổi số và bán lẻ đa kênh hiện đại, k
 
 Tuy nhiên, các phương pháp khảo sát truyền thống đang bộc lộ nhiều hạn chế lớn:
 \begin{itemize}
-    \item \textbf{Tính xâm lấn và làm gián đoạn trải nghiệm:} Việc yêu cầu khách hàng điền phiếu đánh giá giấy hoặc bấm máy khảo sát tại chỗ thường gây cảm giác phiền toái, làm đứt gãy mạch cảm xúc tự nhiên của người mua sắm.
+    \item \textbf{Gây phiền toái và làm gián đoạn trải nghiệm:} Việc yêu cầu khách hàng điền phiếu đánh giá giấy hoặc bấm máy khảo sát tại chỗ thường gây cảm giác phiền toái, làm đứt gãy mạch cảm xúc tự nhiên của người mua sắm.
     \item \textbf{Độ trễ thông tin cao và tỷ lệ phản hồi thấp:} Các hình thức khảo sát sau giao dịch (qua tin nhắn SMS, email, ứng dụng di động) có tỷ lệ phản hồi thực tế thường dưới 5\% và mất nhiều giờ hoặc nhiều ngày để tổng hợp, khiến ban quản lý không thể phát hiện và can thiệp kịp thời các tình huống khách hàng gặp bức xúc.
     \item \textbf{Độ tin cậy và tính thiên lệch (Survey Bias):} Khách hàng thường chỉ chủ động đánh giá khi có trải nghiệm cực kỳ tiêu cực hoặc rất tích cực, bỏ sót nhóm đa số có cảm xúc trung tính hoặc phân vân.
 \end{itemize}
 
-Sự phát triển vượt bậc của Trí tuệ nhân tạo (AI) và Thị giác máy tính (Computer Vision) mở ra tiềm năng giải quyết triệt để bài toán trên thông qua công nghệ \textbf{Nhận dạng biểu cảm khuôn mặt (Facial Expression Recognition - FER)}. Bằng cách phân tích các chuyển động cơ mặt tự nhiên, hệ thống có thể liên tục ghi nhận trạng thái tâm lý của khách hàng một cách thụ động, khách quan và hoàn toàn không xâm lấn.
+Sự phát triển vượt bậc của Trí tuệ nhân tạo (AI) và Thị giác máy tính (Computer Vision) mở ra tiềm năng giải quyết triệt để bài toán trên thông qua công nghệ \textbf{Nhận dạng biểu cảm khuôn mặt (Facial Expression Recognition - FER)}. Bằng cách phân tích các chuyển động cơ mặt tự nhiên, hệ thống có thể liên tục ghi nhận biểu hiện cảm xúc quan sát được của khách hàng một cách thụ động, nhất quán và không cần tiếp xúc vật lý.
 
 Mặc dù vậy, việc đưa mô hình FER từ phòng thí nghiệm vào ứng dụng thực tế trong hệ thống quản trị quan hệ khách hàng (CRM) đặt ra nhiều thách thức kỹ thuật phức tạp:
 \begin{enumerate}
@@ -34,9 +34,9 @@ Xuất phát từ những yêu cầu cấp thiết trên, đề tài tập trung
 Nghiên cứu hướng tới việc thực hiện các mục tiêu cốt lõi sau:
 \begin{enumerate}
     \item \textbf{Xây dựng pipeline nhận dạng biểu cảm khuôn mặt (FER) 7 lớp thời gian thực:} Nghiên cứu quy trình phát hiện khuôn mặt, căn chỉnh hình học, đánh giá và sàng lọc chất lượng ảnh (độ mờ Laplacian, độ sáng), cùng mô hình học sâu phân loại chính xác 7 lớp biểu cảm tiêu chuẩn (\textit{Angry, Disgust, Fear, Happy, Sad, Surprise, Neutral}) với độ trễ thấp.
-    \item \textbf{Phát triển giải thuật làm mịn chuỗi thời gian và tổng hợp phiên (Temporal Smoothing \& Session Aggregation):} Thiết kế giải thuật lọc nhiễu, làm mịn vector xác suất qua thời gian bằng trung bình trượt hàm mũ (EMA), trích xuất biểu cảm chủ đạo và ma trận chuyển dịch cảm xúc (\textit{Expression Transitions}) xuyên suốt thời gian khách hàng lưu lại tại từng điểm chạm.
+    \item \textbf{Áp dụng kỹ thuật làm mịn chuỗi thời gian và tổng hợp phiên:} Sử dụng các kỹ thuật Temporal Smoothing \& Session Aggregation, gồm trung bình trượt hàm mũ (EMA), luật ngưỡng và cơ chế ổn định trạng thái để giảm dao động nhãn cảm xúc giữa các khung hình liên tiếp; đồng thời tổng hợp chuỗi kết quả theo phiên nhằm trích xuất biểu cảm chủ đạo và ma trận chuyển dịch cảm xúc (\textit{Expression Transitions}) trong thời gian khách hàng lưu lại tại từng điểm chạm.
     \item \textbf{Mô hình hóa hành trình khách hàng đa điểm chạm (Customer Journey Mapping):} Thiết lập cơ chế ghi nhận và theo dõi chuỗi phiên trải nghiệm ẩn danh qua 6 khu vực không gian bán lẻ: Cổng vào $\rightarrow$ Khu vực chờ $\rightarrow$ Quầy tư vấn $\rightarrow$ Khu vực sản phẩm $\rightarrow$ Quầy thanh toán $\rightarrow$ Cổng ra.
-    \item \textbf{Thiết kế và tích hợp hệ thống CRM phân tích kinh doanh thông minh (Customer Analytics \& BI):} Xây dựng hoàn chỉnh kiến trúc hệ thống gồm dịch vụ xử lý AI (FastAPI), phân hệ máy chủ trung tâm (Spring Boot), cơ sở dữ liệu (PostgreSQL) và bảng điều khiển trực quan (Next.js), cung cấp các chỉ số đo lường thực tế (Tỷ lệ tích cực/tiêu cực, Độ biến thiên cảm xúc $\Delta$, Hiệu suất bán hàng).
+    \item \textbf{Thiết kế và tích hợp hệ thống CRM phân tích kinh doanh thông minh (Customer Analytics \& BI):} Xây dựng hoàn chỉnh kiến trúc hệ thống gồm dịch vụ xử lý AI (FastAPI), backend nghiệp vụ trung tâm (Spring Boot), cơ sở dữ liệu (PostgreSQL) và dashboard (Next.js), cung cấp các chỉ số đo lường thực tế (Tỷ lệ tích cực/tiêu cực, Độ biến thiên cảm xúc $\Delta$, Hiệu suất bán hàng).
 \end{enumerate}
 
 \subsection*{1.3. Đối tượng và phạm vi nghiên cứu}

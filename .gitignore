@@ -42,6 +42,10 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 
+# Local review and generated scratch outputs
+tmp/
+temp/
+
 # Python Virtual Environments
 .venv/
 venv/
@@ -73,6 +77,8 @@ face_recognition_fe/build/
 # Datasets
 **/dataset/
 **/datasets/
+!fer-benchmark/datasets/
+!fer-benchmark/datasets/**
 deepfacev2/experiments/c2fpw_images/
 test_images/C2FPW/
 test_images/SurFace1259/
@@ -85,4 +91,3 @@ test_images/3D-Face-Morph/
 .gradle-agent/
 **/build/
 *.code-workspace
-

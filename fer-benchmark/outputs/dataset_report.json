@@ -1,0 +1,41 @@
+{
+  "dataset": "CK+ Extended (Kaggle repackaging)",
+  "sha256": "0ad22aa52886ea0bee18111f3fda97265845c8098e90165a776ced34b0e1f659",
+  "total_rows": 920,
+  "selected_test_rows": 182,
+  "usage_counts": {
+    "Training": 734,
+    "PublicTest": 91,
+    "PrivateTest": 95
+  },
+  "class_counts_all": {
+    "angry": 45,
+    "disgust": 59,
+    "fear": 25,
+    "happy": 69,
+    "sad": 28,
+    "surprise": 83,
+    "neutral": 593,
+    "contempt": 18
+  },
+  "class_counts_selected": {
+    "angry": 9,
+    "disgust": 12,
+    "fear": 5,
+    "happy": 14,
+    "sad": 6,
+    "surprise": 17,
+    "neutral": 119
+  },
+  "protocol": {
+    "included_usage": [
+      "PublicTest",
+      "PrivateTest"
+    ],
+    "excluded_labels": [
+      "contempt"
+    ],
+    "expected_samples": 182,
+    "purpose": "Supplementary seven-class reproducibility check; not a substitute for in-the-wild retail data."
+  }
+}

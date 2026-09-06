@@ -1,0 +1,4 @@
+detector,dataset,sample_count,detection_rate,false_positive_rate,exact_count_accuracy,invalid_crop_rate,p95_ms,eligible,selected
+opencv,CKPlus-7-reproducibility,182,1.0,0.0,1.0,0.0,24.61241315,True,True
+mtcnn,CKPlus-7-reproducibility,182,1.0,0.0,1.0,0.0,356.57632499999994,True,False
+retinaface,CKPlus-7-reproducibility,182,1.0,0.0,1.0,0.0,1119.5038312499998,True,False

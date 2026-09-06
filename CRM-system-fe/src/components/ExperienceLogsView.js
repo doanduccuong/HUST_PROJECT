@@ -11,7 +11,7 @@ export default function ExperienceLogsView({ token, products = [], onUpdateProdu
   const [selectedZone, setSelectedZone] = useState("ALL");
   const [selectedState, setSelectedState] = useState("ALL");
   const [selectedPeriod, setSelectedPeriod] = useState(""); // today, 7d, 30d, 90d
-  const [specificDate, setSpecificDate] = useState("2026-07-23"); // Default to seeded demo data date (2026-07-23)
+  const [specificDate, setSpecificDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [showSummary, setShowSummary] = useState(true);
   const [expandedJourneys, setExpandedJourneys] = useState({}); // customerId-date expanded mapping
 
@@ -78,7 +78,7 @@ export default function ExperienceLogsView({ token, products = [], onUpdateProdu
           params: { search: searchQuery, zone: selectedZone, date: dateParam, limit: 100 }
         });
         setSessionsData(res.data);
-      } else if (activeTab === "events") {
+      } else if (activeTab === "events" || activeTab === "alerts") {
         const res = await Client.get("/api/v1/experience/events", {
           params: { search: searchQuery, zone: selectedZone, state: selectedState, date: dateParam, limit: 100 }
         });
@@ -125,7 +125,8 @@ export default function ExperienceLogsView({ token, products = [], onUpdateProdu
   }, [token, activeTab, searchQuery, selectedZone, selectedState, specificDate]);
 
   useEffect(() => {
-    fetchData();
+    const timer = window.setTimeout(fetchData, 0);
+    return () => window.clearTimeout(timer);
   }, [fetchData]);
 
   // Toggle expanded state for a journey row
@@ -170,31 +171,21 @@ export default function ExperienceLogsView({ token, products = [], onUpdateProdu
     }
   };
 
-  // Static mock Alerts for demo, aligned with report metrics
-  const alertLogs = [
-    {
-      id: "ALT-001",
-      zone: "Tech Service Desk (Dán máy)",
-      camera: "CAM-05",
-      type: "IBI Vượt Ngưỡng (Khách sốt ruột)",
-      value: "18.2%",
-      threshold: "<= 5.0%",
-      level: "CRITICAL",
-      action: "Tăng cường thêm 1 kỹ thuật viên hỗ trợ dán máy.",
-      time: "2026-07-26 15:30:00"
-    },
-    {
-      id: "ALT-002",
-      zone: "Mobile Zone (Tư vấn Điện thoại)",
-      camera: "CAM-03",
-      type: "CBI Vượt Ngưỡng (Khách phân vân)",
-      value: "14.5%",
-      threshold: "<= 8.0%",
-      level: "WARNING",
-      action: "Tinh giản thủ tục đối soát giá thu cũ đổi mới (Trade-in).",
-      time: "2026-07-26 14:15:00"
-    }
-  ];
+  const alertLogs = eventsData
+    .filter((event) => event.stateChanged && ["IMPATIENT", "DISSATISFIED", "CONFUSED"].includes(event.experienceState))
+    .map((event) => ({
+      id: `ALT-${event.id}`,
+      zone: event.zone,
+      camera: event.cameraId,
+      type: `Chuyển trạng thái ${event.previousState || "NEUTRAL"} → ${event.experienceState}`,
+      value: `${Math.round((event.stateConfidence || 0) * 100)}%`,
+      threshold: "model confidence",
+      level: event.experienceState === "DISSATISFIED" ? "CRITICAL" : "WARNING",
+      action: event.experienceState === "IMPATIENT"
+        ? "Kiểm tra thời gian chờ và điều phối thêm nhân viên."
+        : "Ưu tiên nhân viên tiếp cận và hỗ trợ khách hàng.",
+      time: event.observedAt,
+    }));
 
   // Helper stats for summary
   const getSummaryStats = () => {
@@ -260,8 +251,8 @@ export default function ExperienceLogsView({ token, products = [], onUpdateProdu
       return {
         total: alertLogs.length,
         label: "Số Cảnh Báo Vận Hành",
-        metric: "2 điểm nóng",
-        metricLabel: "Tech Desk & Mobile Zone"
+        metric: `${new Set(alertLogs.map((alert) => alert.zone)).size} điểm nóng`,
+        metricLabel: "Sinh từ transition thật"
       };
     }
   };
