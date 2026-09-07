@@ -44,39 +44,22 @@ class CustomerService:
         # Chuyển kênh màu từ RGB sang BGR
         face_img = cv2.cvtColor(face_img, cv2.COLOR_RGB2BGR)
         
-        # Chuẩn hóa kích thước khuôn mặt trước khi phân vùng
-        face_img = cv2.resize(face_img, (160, 160))
+        # 2. Trích xuất vector đặc trưng toàn cục bằng DeepFace (VGGFace)
+        rep = DeepFace.represent(
+            img_path=face_img,
+            model_name="VGG-Face",
+            enforce_detection=False,
+            detector_backend="skip"
+        )
         
-        # 2. Gọi dịch vụ phân chia khuôn mặt thành 3 vùng
-        from services.facial_segmentation import segment_face_regions
-        img_upper, img_mid, img_lower = segment_face_regions(face_img)
+        if not isinstance(rep, list) or len(rep) == 0 or not isinstance(rep[0], dict):
+            raise ValueError("Không thể trích xuất đặc trưng khuôn mặt")
         
-        # 3. Trích xuất vector đặc trưng 512 chiều cho từng vùng
-        # Dùng detector_backend="skip" để bỏ qua việc phát hiện mặt lại trên ảnh đã crop
-        rep_upper = DeepFace.represent(img_path=img_upper, model_name="Facenet512", enforce_detection=False, detector_backend="skip")
-        rep_mid = DeepFace.represent(img_path=img_mid, model_name="Facenet512", enforce_detection=False, detector_backend="skip")
-        rep_lower = DeepFace.represent(img_path=img_lower, model_name="Facenet512", enforce_detection=False, detector_backend="skip")
-        
-        if (not isinstance(rep_upper, list) or len(rep_upper) == 0 or not isinstance(rep_upper[0], dict) or
-            not isinstance(rep_mid, list) or len(rep_mid) == 0 or not isinstance(rep_mid[0], dict) or
-            not isinstance(rep_lower, list) or len(rep_lower) == 0 or not isinstance(rep_lower[0], dict)):
-            raise ValueError("Không thể trích xuất đặc trưng phân vùng khuôn mặt")
-            
-        # Áp dụng trọng số tinh chỉnh tối ưu hóa PTTM qua projector
-        from services.projector import project_embedding
-        
-        raw_upper = rep_upper[0].get("embedding")
-        raw_mid = rep_mid[0].get("embedding")
-        raw_lower = rep_lower[0].get("embedding")
-        
-        if raw_upper is None or raw_mid is None or raw_lower is None:
+        embedding = rep[0].get("embedding")
+        if embedding is None:
             raise ValueError("Vector đặc trưng rỗng")
-            
-        emb_upper = project_embedding(raw_upper)
-        emb_mid = project_embedding(raw_mid)
-        emb_lower = project_embedding(raw_lower)
         
-        # 4. Phân tích tuổi và giới tính từ ảnh đăng ký (sử dụng ảnh gốc ban đầu)
+        # 3. Phân tích tuổi và giới tính từ ảnh đăng ký (sử dụng ảnh gốc ban đầu)
         try:
             analysis = DeepFace.analyze(
                 img_path=raw_img,
@@ -112,7 +95,7 @@ class CustomerService:
             age = 30
             gender = "Male"
             
-        # 5. Lưu thông tin vào CSDL PostgreSQL
+        # 4. Lưu thông tin vào CSDL PostgreSQL
         conn = database.get_db_connection()
         cur = conn.cursor()
         try:
@@ -141,21 +124,15 @@ class CustomerService:
                     raise ValueError("Không thể tạo khách hàng mới")
                 customer_id = res[0]
                 
-            # Chèn 3 vector phân vùng tương ứng vào bảng customer_embeddings
-            regions_data = [
-                ("upper", emb_upper),
-                ("mid", emb_mid),
-                ("lower", emb_lower)
-            ]
-            for region, emb in regions_data:
-                vector_str = "[" + ",".join(str(x) for x in emb) + "]"
-                cur.execute(
-                    """
-                    INSERT INTO customer_embeddings (customer_id, face_region, face_vector)
-                    VALUES (%s, %s, %s);
-                    """,
-                    (customer_id, region, vector_str)
-                )
+            # Chèn vector đặc trưng vào bảng customer_embeddings
+            vector_str = "[" + ",".join(str(x) for x in embedding) + "]"
+            cur.execute(
+                """
+                INSERT INTO customer_embeddings (customer_id, face_vector)
+                VALUES (%s, %s);
+                """,
+                (customer_id, vector_str)
+            )
             
             conn.commit()
             return {
@@ -197,10 +174,9 @@ class CustomerService:
                     "age": r["age"],
                     "user_image": r["user_image"],
                     "created_at": r["created_at"].isoformat() if r["created_at"] else None,
-                    "photo_count": int(r["photo_count"] / 3)
+                    "photo_count": int(r["photo_count"])
                 })
             return results
         finally:
             cur.close()
             conn.close()
-

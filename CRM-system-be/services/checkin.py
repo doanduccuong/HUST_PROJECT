@@ -8,7 +8,6 @@ from psycopg2.extras import RealDictCursor
 # Thêm thư mục gốc của backend vào sys.path để import database, config
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import database
-from services.facial_segmentation import segment_face_regions
 
 class CheckinService:
     @staticmethod
@@ -52,7 +51,7 @@ class CheckinService:
             emotion = "neutral"
             
             
-        # 4. Kết nối CSDL và tìm khách hàng trùng khớp bằng cách duyệt qua tất cả khuôn mặt phát hiện được
+        # 3. Kết nối CSDL và tìm khách hàng trùng khớp bằng embedding toàn cục
         conn = database.get_db_connection()
         cur = conn.cursor(cursor_factory=RealDictCursor)
         try:
@@ -76,49 +75,24 @@ class CheckinService:
                 # Chuyển kênh màu từ RGB sang BGR
                 face_img = cv2.cvtColor(face_img, cv2.COLOR_RGB2BGR)
                 
-                # Chuẩn hóa kích thước khuôn mặt trước khi phân vùng
-                face_img = cv2.resize(face_img, (160, 160))
+                # Trích xuất vector đặc trưng toàn cục bằng DeepFace (VGGFace)
+                rep = DeepFace.represent(
+                    img_path=face_img,
+                    model_name="VGG-Face",
+                    enforce_detection=False,
+                    detector_backend="skip"
+                )
                 
-                # Cắt phân vùng
-                img_upper, img_mid, img_lower = segment_face_regions(face_img)
-                
-                # Trích xuất vector đặc trưng bằng DeepFace
-                rep_upper = DeepFace.represent(img_path=img_upper, model_name="Facenet512", enforce_detection=False, detector_backend="skip")
-                rep_mid = DeepFace.represent(img_path=img_mid, model_name="Facenet512", enforce_detection=False, detector_backend="skip")
-                rep_lower = DeepFace.represent(img_path=img_lower, model_name="Facenet512", enforce_detection=False, detector_backend="skip")
-                
-                if not rep_upper or not rep_mid or not rep_lower:
-                    continue
-                    
-                # Áp dụng trọng số tinh chỉnh tối ưu hóa PTTM qua projector
-                from services.projector import project_embedding
-                
-                emb_upper = None
-                emb_mid = None
-                emb_lower = None
-                
-                if (isinstance(rep_upper, list) and len(rep_upper) > 0 and isinstance(rep_upper[0], dict) and
-                    isinstance(rep_mid, list) and len(rep_mid) > 0 and isinstance(rep_mid[0], dict) and
-                    isinstance(rep_lower, list) and len(rep_lower) > 0 and isinstance(rep_lower[0], dict)):
-                    
-                    raw_upper = rep_upper[0].get("embedding")
-                    raw_mid = rep_mid[0].get("embedding")
-                    raw_lower = rep_lower[0].get("embedding")
-                    
-                    if raw_upper is not None and raw_mid is not None and raw_lower is not None:
-                        emb_upper = project_embedding(raw_upper)
-                        emb_mid = project_embedding(raw_mid)
-                        emb_lower = project_embedding(raw_lower)
-                
-                if emb_upper is None or emb_mid is None or emb_lower is None:
+                if not rep or not isinstance(rep, list) or len(rep) == 0:
                     continue
                 
-                vector_up_str = "[" + ",".join(str(x) for x in emb_upper) + "]"
-                vector_mid_str = "[" + ",".join(str(x) for x in emb_mid) + "]"
-                vector_low_str = "[" + ",".join(str(x) for x in emb_lower) + "]"
+                embedding = rep[0].get("embedding") if isinstance(rep[0], dict) else None
+                if embedding is None:
+                    continue
                 
-                # Câu truy vấn tính khoảng cách kết hợp tuyến tính có trọng số trực tiếp trong PostgreSQL (Weighted Fusion)
-                # Trọng số: Thượng = 0.5, Trung = 0.3, Hạ = 0.2
+                vector_str = "[" + ",".join(str(x) for x in embedding) + "]"
+                
+                # Truy vấn tìm khách hàng gần nhất theo khoảng cách Cosine
                 cur.execute(
                     """
                     SELECT 
@@ -126,17 +100,13 @@ class CheckinService:
                       c.name, 
                       c.gender, 
                       c.age,
-                      (0.5 * (e_up.face_vector <=> %s::vector) + 
-                       0.3 * (e_mid.face_vector <=> %s::vector) + 
-                       0.2 * (e_low.face_vector <=> %s::vector)) AS distance
+                      (e.face_vector <=> %s::vector) AS distance
                     FROM customers c
-                    JOIN customer_embeddings e_up ON c.id = e_up.customer_id AND e_up.face_region = 'upper'
-                    JOIN customer_embeddings e_mid ON c.id = e_mid.customer_id AND e_mid.face_region = 'mid'
-                    JOIN customer_embeddings e_low ON c.id = e_low.customer_id AND e_low.face_region = 'lower'
+                    JOIN customer_embeddings e ON c.id = e.customer_id
                     ORDER BY distance ASC
                     LIMIT 1;
                     """,
-                    (vector_up_str, vector_mid_str, vector_low_str)
+                    (vector_str,)
                 )
                 row = cur.fetchone()
                 
@@ -146,7 +116,7 @@ class CheckinService:
                     if dist < min_distance:
                         min_distance = dist
                         closest_customer_name = row["name"]
-                    # Ngưỡng chấp nhận nhận diện (Threshold) sau dung hợp trọng số là 0.30
+                    # Ngưỡng chấp nhận nhận diện (Threshold)
                     if dist < 0.30 and (best_match is None or dist < best_match["distance"]):
                         best_match = {
                             "customer_id": row["customer_id"],

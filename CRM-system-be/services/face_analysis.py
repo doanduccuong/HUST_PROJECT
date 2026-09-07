@@ -6,12 +6,13 @@ from typing import Any
 import cv2
 import numpy as np
 
-from services.facial_segmentation import segment_face_regions
-from services.projector import project_embedding
 
-
-MODEL_NAME = "Facenet512"
-MODEL_VERSION = "Facenet512+regional-projector-v1"
+DETECTOR_BACKEND = "opencv"
+EXPRESSION_MODEL_VERSION = "DeepFace-Emotion-CNN-7class-v1"
+MODEL_VERSION = (
+    f"detector={DETECTOR_BACKEND};"
+    f"expression={EXPRESSION_MODEL_VERSION}"
+)
 
 
 def _as_uint8_bgr(face_rgb: np.ndarray) -> np.ndarray:
@@ -28,27 +29,6 @@ def _first_analysis_item(result: Any) -> dict[str, Any]:
     while isinstance(current, list) and current:
         current = current[0]
     return current if isinstance(current, dict) else {}
-
-
-def _embedding(region: np.ndarray) -> list[float]:
-    from deepface import DeepFace
-
-    representation = DeepFace.represent(
-        img_path=region,
-        model_name=MODEL_NAME,
-        detector_backend="skip",
-        enforce_detection=False,
-    )
-    item = _first_analysis_item(representation)
-    raw_embedding = item.get("embedding")
-    if not isinstance(raw_embedding, list) or len(raw_embedding) != 512:
-        raise ValueError("Không trích xuất được embedding FaceNet512 hợp lệ")
-
-    projected = np.asarray(project_embedding(raw_embedding), dtype=np.float32)
-    norm = float(np.linalg.norm(projected))
-    if norm > 0:
-        projected = projected / norm
-    return projected.tolist()
 
 
 def _quality(face_bgr: np.ndarray, detection_confidence: float) -> dict[str, Any]:
@@ -94,7 +74,7 @@ def analyze_image_bytes(image_bytes: bytes) -> dict[str, Any]:
 
     faces = DeepFace.extract_faces(
         img_path=raw_image,
-        detector_backend="opencv",
+        detector_backend=DETECTOR_BACKEND,
         enforce_detection=True,
         align=True,
     )
@@ -108,9 +88,10 @@ def analyze_image_bytes(image_bytes: bytes) -> dict[str, Any]:
     if face_rgb is None:
         raise ValueError("Không lấy được vùng khuôn mặt đã căn chỉnh")
 
-    face_bgr = cv2.resize(_as_uint8_bgr(face_rgb), (160, 160))
-    upper, mid, lower = segment_face_regions(face_bgr)
+    face_bgr = _as_uint8_bgr(face_rgb)
 
+    # DeepFace.analyze tự resize về 48×48 grayscale cho CNN emotion bên trong,
+    # nên không cần resize trước ở đây.
     emotion_analysis = DeepFace.analyze(
         img_path=face_bgr,
         actions=["emotion"],
@@ -141,14 +122,11 @@ def analyze_image_bytes(image_bytes: bytes) -> dict[str, Any]:
 
     result = {
         "modelVersion": MODEL_VERSION,
+        "detectorBackend": DETECTOR_BACKEND,
+        "expressionModelVersion": EXPRESSION_MODEL_VERSION,
         "faceCount": 1,
         "primaryFace": {
             "region": region,
-            "embeddings": {
-                "upper": _embedding(upper),
-                "mid": _embedding(mid),
-                "lower": _embedding(lower),
-            },
             "expression": {
                 "dominant": dominant,
                 "confidence": round(confidence, 6),

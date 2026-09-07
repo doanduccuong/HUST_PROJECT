@@ -5,27 +5,97 @@
 \setcounter{figure}{0}
 \setcounter{table}{0}
 
-\subsection*{2.1. Quy trình xử lý ảnh khuôn mặt trong thị giác máy tính}
-\addcontentsline{toc}{subsection}{\numberline{}2.1. Quy trình xử lý ảnh khuôn mặt trong thị giác máy tính}
+\subsection*{2.1. Phát hiện và chuẩn hóa khuôn mặt trong thị giác máy tính}
+\addcontentsline{toc}{subsection}{\numberline{}2.1. Phát hiện và chuẩn hóa khuôn mặt trong thị giác máy tính}
 
-Trong các hệ thống thị giác máy tính phục vụ phân tích hành vi người dùng, quy trình tiền xử lý ảnh khuôn mặt đóng vai trò quyết định đến độ chính xác của các mô hình học sâu ở hạ nguồn. Một luồng xử lý chuẩn bao gồm ba bước cơ bản: phát hiện khuôn mặt, căn chỉnh hình học và kiểm soát chất lượng ảnh thu nhận.
+Ảnh từ camera không được đưa trực tiếp vào mô hình phân loại biểu cảm. Hệ thống trước hết phát hiện khuôn mặt, căn chỉnh vùng mặt về cùng hệ tọa độ và kiểm soát chất lượng ảnh; sau đó mới đưa vùng mặt đã chuẩn hóa vào bộ phân loại cảm xúc CNN bảy lớp. Cách trình bày dưới đây đi theo thứ tự: cơ sở lý thuyết phát hiện khuôn mặt, lý do chọn ba detector để so sánh, căn chỉnh hình học, rồi đánh giá chất lượng ảnh.
 
-\subsubsection*{2.1.1. Phát hiện khuôn mặt (Face Detection)}
-\addcontentsline{toc}{subsubsection}{\numberline{}2.1.1. Phát hiện khuôn mặt (Face Detection)}
+\subsubsection*{2.1.1. Cơ sở lý thuyết của phát hiện khuôn mặt (Face Detection)}
+\addcontentsline{toc}{subsubsection}{\numberline{}2.1.1. Cơ sở lý thuyết của phát hiện khuôn mặt (Face Detection)}
 
-Phát hiện khuôn mặt là tác vụ xác định vị trí và kích thước của các khuôn mặt xuất hiện trong một khung hình tĩnh hoặc chuỗi video. Các thuật toán phát hiện hiện đại được chia thành hai nhóm chính:
+Phát hiện khuôn mặt là tác vụ xác định khu vực chứa khuôn mặt trong ảnh hoặc khung hình video. Đầu ra tối thiểu của detector là hộp giới hạn và điểm tin cậy cho mỗi khuôn mặt; một số detector còn dự đoán các điểm mốc như hai mắt, mũi và hai khóe miệng để hỗ trợ căn chỉnh. Detector tốt không chỉ cần tìm thấy khuôn mặt, mà còn phải hạn chế phát hiện nhầm, tạo vùng crop ổn định và đáp ứng giới hạn độ trễ của hệ thống camera.
+
+Các phương pháp phát hiện có thể chia thành hai nhóm chính:
 \begin{itemize}
-    \item \textbf{Phương pháp truyền thống (Haar Cascades, HOG):} Sử dụng các bộ trích xuất đặc trưng thủ công kết hợp bộ phân lớp tăng cường (AdaBoost) hoặc máy học vector hỗ trợ (SVM). Ưu điểm là tốc độ tính toán cực nhanh trên CPU, nhưng độ chính xác suy giảm mạnh khi đối mặt với góc quay nghiêng, khuôn mặt bị che khuất một phần hoặc điều kiện ánh sáng yếu.
-    \item \textbf{Phương pháp học sâu (Single Shot MultiBox Detector - SSD, RetinaFace):} Mạng nơ-ron tích chập (CNN) phát hiện đồng thời hộp giới hạn (Bounding Box) và xác suất tồn tại khuôn mặt trên nhiều tầng tỷ lệ đặc trưng (Feature Pyramid Networks - FPN). Các mô hình như RetinaFace \cite{retinaface} đạt độ chính xác vượt trội nhờ khả năng dự đoán đồng thời 5 điểm mốc mốc hình học (mắt trái, mắt phải, đỉnh mũi, khóe miệng trái và khóe miệng phải), đáp ứng tốt yêu cầu triển khai trong môi trường bán lẻ thực tế.
+    \item \textbf{Phương pháp dựa trên đặc trưng thủ công:} Haar Cascade kết hợp đặc trưng Haar-like, ảnh tích phân và bộ phân lớp cascade được huấn luyện bằng AdaBoost \cite{viola2001rapid}. Nhóm này nhẹ và chạy nhanh trên CPU, nhưng nhạy hơn với góc quay, che khuất và điều kiện chiếu sáng khác dữ liệu huấn luyện.
+    \item \textbf{Phương pháp học sâu:} CNN học trực tiếp đặc trưng khuôn mặt và có thể dự đoán đồng thời hộp mặt, độ tin cậy và landmark. Kiến trúc nhiều tầng như MTCNN tinh chỉnh kết quả từ thô đến chính xác \cite{zhang2016mtcnn}; kiến trúc một giai đoạn kết hợp tháp đặc trưng như RetinaFace xử lý khuôn mặt ở nhiều tỷ lệ \cite{retinaface}. Đổi lại, nhóm này thường cần nhiều tài nguyên và thời gian suy luận hơn.
 \end{itemize}
 
-\subsubsection*{2.1.2. Căn chỉnh khuôn mặt (Face Alignment)}
-\addcontentsline{toc}{subsubsection}{\numberline{}2.1.2. Căn chỉnh khuôn mặt (Face Alignment)}
+Vì độ chính xác công bố trên các bộ dữ liệu khác không phản ánh trực tiếp camera của hệ thống, detector phải được đánh giá lại bằng Detection Rate, tỷ lệ đúng số lượng khuôn mặt, False Positive Rate, chất lượng crop/căn chỉnh và độ trễ p95 trên cùng dữ liệu và phần cứng.
 
-Ảnh khuôn mặt sau khi phát hiện thường bị nghiêng theo các trục xoay không gian (Roll, Pitch, Yaw). Quá trình căn chỉnh hình học thực hiện phép biến đổi affine (Affine Transformation) hai chiều nhằm xoay và chuẩn hóa khuôn mặt sao cho đường nối hai đồng tử mắt nằm ngang và tâm khuôn mặt được đưa về chính giữa khung hình chuẩn (kích thước $224 \times 224$ pixels). Phép biến đổi này giúp loại bỏ sự biến thiên do tư thế đầu của khách hàng, đảm bảo mô hình phân loại biểu cảm chỉ tập trung vào sự co giãn của các nhóm cơ mặt.
 
-\subsubsection*{2.1.3. Đánh giá chất lượng ảnh thu nhận (Image Quality Assessment)}
-\addcontentsline{toc}{subsubsection}{\numberline{}2.1.3. Đánh giá chất lượng ảnh thu nhận (Image Quality Assessment)}
+\subsubsection*{2.1.2. Lý do lựa chọn OpenCV, MTCNN và RetinaFace cho bài toán FER cửa hàng}
+\addcontentsline{toc}{subsubsection}{\numberline{}2.1.2. Lý do lựa chọn OpenCV, MTCNN và RetinaFace cho bài toán FER cửa hàng}
+
+Hệ thống camera cửa hàng đặt ra yêu cầu kép cho bước phát hiện khuôn mặt: detector phải đủ nhanh để xử lý liên tục trên phần cứng giới hạn (CPU), đồng thời đủ chính xác để không bỏ sót khuôn mặt trong điều kiện chiếu sáng không đều, góc nghiêng đa dạng và che khuất cục bộ thường gặp tại quầy thanh toán hoặc kệ hàng. Hiện tại hệ thống đang triển khai OpenCV Haar Cascade vì nhẹ và dễ tích hợp; tuy nhiên, chưa có phép so sánh định lượng để xác nhận lựa chọn này là tối ưu.
+
+Để trả lời câu hỏi đó, em chọn ba detector đại diện cho ba cấp độ phức tạp tăng dần --- từ đặc trưng thủ công đến học sâu đa tỷ lệ --- nhằm khảo sát mối quan hệ giữa chất lượng phát hiện, chất lượng crop/căn chỉnh và Accuracy FER cuối cùng.
+
+\vspace{0.3cm}
+\noindent\textbf{a) OpenCV Haar Cascade}
+
+OpenCV Haar Cascade \cite{viola2001rapid,opencv_cascade} sử dụng đặc trưng Haar-like kết hợp ảnh tích phân và bộ phân lớp cascade được huấn luyện bằng AdaBoost. Đây là detector \textit{đang được triển khai} trong hệ thống hiện tại, đóng vai trò \textit{mốc so sánh gốc} (baseline) cho thí nghiệm đối sánh.
+
+\begin{itemize}
+    \item \textbf{Điểm mạnh:} Tốc độ rất cao trên CPU (hàng chục đến hàng trăm FPS), không yêu cầu GPU; kích thước mô hình nhỏ (vài trăm KB); tích hợp sẵn trong thư viện OpenCV nên dễ triển khai và bảo trì.
+    \item \textbf{Điểm yếu:} Nhạy cảm với góc quay lớn (profile, nghiêng $>$ 30\textdegree), che khuất cục bộ (khẩu trang, tay che) và thay đổi chiếu sáng khác biệt nhiều so với tập huấn luyện. Đầu ra chỉ có hộp giới hạn, \textit{không có landmark} nên không hỗ trợ căn chỉnh chính xác --- vùng crop có thể bị lệch, ảnh hưởng trực tiếp đến Accuracy FER.
+    \item \textbf{Phù hợp với bài toán cửa hàng:} Hệ thống cửa hàng chạy trên CPU giới hạn, Haar Cascade đáp ứng được yêu cầu xử lý thời gian thực mà không cần đầu tư thêm phần cứng. Tuy nhiên, camera cửa hàng thường gắn góc cao hoặc nghiêng, khách hàng di chuyển liên tục và ánh sáng không đồng nhất --- đúng các điều kiện mà Haar Cascade dễ bị sụt Detection Rate. Cần thí nghiệm đối sánh để biết mức sụt này có đáng kể không.
+\end{itemize}
+
+\vspace{0.3cm}
+\noindent\textbf{b) MTCNN (Multi-task Cascaded Convolutional Networks)}
+
+MTCNN \cite{zhang2016mtcnn} gồm ba mạng CNN xếp tầng: P-Net tạo vùng ứng viên thô, R-Net tinh chỉnh hộp giới hạn, O-Net dự đoán hộp mặt cuối cùng kèm năm điểm mốc (hai mắt, mũi, hai khóe miệng). MTCNN được chọn vì là detector học sâu \textit{phổ biến nhất} trong DeepFace và nhiều pipeline FER đã công bố, cho phép so sánh kết quả trực tiếp với tài liệu liên quan.
+
+\begin{itemize}
+    \item \textbf{Điểm mạnh:} Phát hiện và trả landmark trong cùng kiến trúc, giúp pipeline có thêm bước căn chỉnh khuôn mặt chính xác hơn OpenCV. Xử lý được mặt nghiêng vừa phải và điều kiện sáng đa dạng hơn nhờ CNN học trực tiếp đặc trưng từ dữ liệu. Tốc độ trung bình, có thể chạy trên CPU ở mức chấp nhận được ($\sim$5--15 FPS tùy kích thước ảnh).
+    \item \textbf{Điểm yếu:} Kiến trúc ba tầng tuần tự nên chậm hơn Haar Cascade khoảng 5--10 lần. Khó phát hiện mặt rất nhỏ ($<$ 20 px) hoặc mặt bị che khuất nặng vì P-Net hoạt động ở độ phân giải cố định. Không tận dụng được tháp đặc trưng đa tỷ lệ như các kiến trúc hiện đại hơn.
+    \item \textbf{Phù hợp với bài toán cửa hàng:} Khách hàng tại quầy thường không nhìn thẳng vào camera mà nghiêng đầu, quay người --- MTCNN xử lý góc nghiêng vừa tốt hơn Haar Cascade. Việc có landmark giúp căn chỉnh vùng crop chính xác hơn, từ đó có thể cải thiện Accuracy FER mà không cần thay đổi mô hình biểu cảm. Tốc độ vẫn chấp nhận được trên CPU.
+\end{itemize}
+
+\vspace{0.3cm}
+\noindent\textbf{c) RetinaFace}
+
+RetinaFace \cite{retinaface} là kiến trúc CNN một giai đoạn (single-stage) kết hợp tháp đặc trưng đa tỷ lệ (Feature Pyramid Network --- FPN), cho phép phát hiện khuôn mặt ở nhiều kích thước trong cùng một lần suy luận. RetinaFace đóng vai trò \textit{mốc chất lượng cao nhất} trong thí nghiệm đối sánh, để đo xem detector tốt nhất hiện có cải thiện FER toàn trình bao nhiêu so với baseline, và chi phí độ trễ phải trả thêm là bao nhiêu.
+
+\begin{itemize}
+    \item \textbf{Điểm mạnh:} Đạt kết quả hàng đầu trên benchmark WIDER FACE (AP > 90\% trên tập Hard); phát hiện tốt mặt rất nhỏ, mặt nghiêng, mặt bị che khuất nhờ FPN khai thác đồng thời đặc trưng ở nhiều tỷ lệ. Trả năm landmark chất lượng cao, hỗ trợ căn chỉnh chính xác.
+    \item \textbf{Điểm yếu:} Nặng hơn đáng kể so với hai phương án còn lại: mô hình lớn hơn, thời gian suy luận cao hơn (có thể chậm 10--30 lần so với Haar Cascade trên CPU), thường cần GPU để đạt tốc độ thời gian thực. Trong hệ thống cửa hàng chạy CPU, đây là chi phí phải cân nhắc.
+    \item \textbf{Phù hợp với bài toán cửa hàng:} Môi trường cửa hàng có nhiều thách thức đồng thời: khuôn mặt nhỏ (khách đứng xa camera), góc chụp từ trên xuống, ánh sáng yếu hoặc ngược sáng, che khuất do túi xách hoặc kệ hàng. RetinaFace với FPN đa tỷ lệ là detector có khả năng cao nhất để xử lý đồng thời các điều kiện này. Em đưa vào thí nghiệm đối sánh để đo giới hạn trên: liệu detector tốt nhất có thể cải thiện Accuracy FER bao nhiêu, từ đó quyết định có đáng nâng cấp phần cứng (thêm GPU) hay không.
+\end{itemize}
+
+\vspace{0.3cm}
+\noindent\textbf{Tại sao chọn đúng ba detector này?}
+
+Ba detector trên bao phủ toàn bộ phổ đánh đổi giữa tốc độ và chất lượng mà hệ thống cửa hàng cần xem xét: Haar Cascade là cực nhanh nhưng có thể thiếu chính xác; RetinaFace là cực chính xác nhưng có thể quá chậm; MTCNN là phương án trung gian. Cả ba đều được hỗ trợ sẵn bởi thư viện DeepFace qua tham số \texttt{detector\_backend}, cho phép giữ nguyên toàn bộ pipeline (đọc ảnh, crop, phân loại biểu cảm) và chỉ thay đổi detector --- cô lập đúng biến cần khảo sát.
+
+\begin{table}[H]
+    \centering
+    \caption{Tóm tắt điểm mạnh, điểm yếu và vai trò của ba detector trong thí nghiệm đối sánh}
+    \label{tab:detector-theory-comparison}
+    \small
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{p{0.14\textwidth} p{0.28\textwidth} p{0.28\textwidth} p{0.22\textwidth}}
+        \hline
+        \textbf{Detector} & \textbf{Điểm mạnh} & \textbf{Điểm yếu} & \textbf{Vai trò trong đối sánh} \\
+        \hline
+        OpenCV Haar Cascade & Rất nhanh trên CPU; nhẹ; dễ tích hợp & Nhạy góc quay/che khuất; không có landmark; crop có thể lệch & Baseline --- cấu hình đang triển khai \\
+        MTCNN & Trả landmark; xử lý góc nghiêng vừa; phổ biến trong tài liệu FER & Chậm hơn Haar 5--10$\times$; khó phát hiện mặt nhỏ & Phương án học sâu trung gian \\
+        RetinaFace & AP cao nhất (WIDER FACE Hard); phát hiện mặt nhỏ/che khuất tốt; landmark chất lượng & Nặng; chậm 10--30$\times$ so với Haar trên CPU & Mốc chất lượng cao nhất để đo chi phí \\
+        \hline
+    \end{tabular}}
+\end{table}
+
+Thí nghiệm đối sánh giữ cố định mô hình CNN biểu cảm bảy lớp và chỉ thay đổi detector, nhờ đó kết quả cho thấy rõ: (1) detector nào phát hiện được nhiều khuôn mặt hơn trên dữ liệu camera thực tế, (2) chất lượng crop/căn chỉnh khác nhau ảnh hưởng đến Accuracy FER ra sao, và (3) chi phí độ trễ tăng thêm có đáng để đổi lấy cải thiện đó hay không. Kết quả đo cụ thể trên 182 mẫu CK+ được trình bày tại Mục 2.2 (Bảng~\ref{tab:ckplus-detector-benchmark} và Bảng~\ref{tab:ckplus-e2e-benchmark}).
+
+\subsubsection*{2.1.3. Căn chỉnh khuôn mặt (Face Alignment)}
+\addcontentsline{toc}{subsubsection}{\numberline{}2.1.3. Căn chỉnh khuôn mặt (Face Alignment)}
+
+Ảnh khuôn mặt sau khi phát hiện có thể bị nghiêng theo các trục Roll, Pitch và Yaw. Dựa trên các landmark, quá trình căn chỉnh áp dụng phép biến đổi hình học để đưa đường nối hai mắt về gần phương ngang, đặt tâm khuôn mặt vào vị trí thống nhất và chuẩn hóa kích thước ảnh. Bước này làm giảm biến thiên do tư thế và vị trí, nhờ đó mô hình FER nhận đầu vào ổn định hơn. Với detector không trả landmark trực tiếp, tầng tích hợp phải tự ước lượng điểm mắt hoặc dùng cơ chế căn chỉnh tương ứng; vì vậy trong thí nghiệm đối sánh, detector và kết quả căn chỉnh được xem là một cấu hình tiền xử lý hoàn chỉnh.
+
+
+\subsubsection*{2.1.4. Đánh giá chất lượng ảnh thu nhận (Image Quality Assessment)}
+\addcontentsline{toc}{subsubsection}{\numberline{}2.1.4. Đánh giá chất lượng ảnh thu nhận (Image Quality Assessment)}
 
 Trong môi trường thực tế của cửa hàng, khách hàng liên tục di chuyển khiến nhiều khung hình bị mờ do chuyển động (motion blur), thiếu sáng hoặc quá sáng. Nếu đưa trực tiếp các khung hình suy biến này vào mô hình AI, kết quả dự đoán sẽ có độ bất định cao và gây nhiễu cho hệ thống phân tích. Do đó, em tích hợp bộ lọc chất lượng ảnh trước khi đưa vào pipeline nhận dạng biểu cảm, dựa trên ba yếu tố: độ mờ, độ sáng và độ tin cậy phát hiện khuôn mặt.
 
@@ -53,7 +123,9 @@ Trong môi trường thực tế của cửa hàng, khách hàng liên tục di 
 \begin{equation}
 Q = 0.45 \cdot C_{\text{face}} + 0.35 \cdot S_{\text{blur}} + 0.20 \cdot S_{\text{bright}}
 \end{equation}
-Em phân bổ trọng số dựa trên mức độ ảnh hưởng của từng yếu tố đến chất lượng nhận dạng biểu cảm: $C_{\text{face}}$ (độ tin cậy phát hiện khuôn mặt) nhận trọng số lớn nhất $0.45$ vì nếu mô hình không chắc chắn có khuôn mặt trong khung hình thì mọi phân tích biểu cảm tiếp theo đều vô nghĩa; $S_{\text{blur}}$ nhận $0.35$ vì ảnh mờ làm mất các đặc trưng co giãn cơ mặt --- yếu tố cốt lõi để phân biệt các biểu cảm; $S_{\text{bright}}$ nhận $0.20$ vì mô hình học sâu có khả năng chịu đựng sự lệch sáng ở mức vừa phải, chỉ cần loại bỏ khi ảnh quá tối hoặc cháy sáng hoàn toàn. Tổng ba trọng số bằng $1.0$ đảm bảo $Q \in [0, 1]$. Khung hình chỉ được chấp nhận khi $Q \ge 0.45$ và $C_{\text{face}} \ge 0.70$. Các khung hình không đạt chuẩn bị loại bỏ và ghi nhận lý do cụ thể (\textit{IMAGE\_BLURRY, IMAGE\_TOO\_DARK, IMAGE\_TOO\_BRIGHT}).
+Em phân bổ trọng số dựa trên mức độ ảnh hưởng của từng yếu tố đến chất lượng nhận dạng biểu cảm: $C_{\text{face}}$ (độ tin cậy phát hiện khuôn mặt) nhận trọng số lớn nhất $0.45$ vì nếu mô hình không chắc chắn có khuôn mặt trong khung hình thì mọi phân tích biểu cảm tiếp theo đều vô nghĩa; $S_{\text{blur}}$ nhận $0.35$ vì ảnh mờ làm mất các đặc trưng co giãn cơ mặt --- yếu tố cốt lõi để phân biệt các biểu cảm; $S_{\text{bright}}$ nhận $0.20$ vì mô hình học sâu có khả năng chịu đựng sự lệch sáng ở mức vừa phải, chỉ cần loại bỏ khi ảnh quá tối hoặc cháy sáng hoàn toàn. Tổng ba trọng số bằng $1.0$ đảm bảo $Q \in [0, 1]$.
+
+Khung hình chỉ được chấp nhận khi thỏa đồng thời hai điều kiện: $Q \ge 0.45$ và $C_{\text{face}} \ge 0.70$. Điều kiện $C_{\text{face}} \ge 0.70$ được đặt riêng vì $C_{\text{face}}$ mang tính nhị phân hơn các yếu tố khác --- nếu detector không đủ tin cậy rằng vùng ảnh chứa khuôn mặt, thì dù ảnh rõ nét và sáng đẹp đến đâu cũng không nên đưa vào phân tích biểu cảm; ngưỡng $0.70$ đảm bảo detector có ít nhất $70\%$ độ tin cậy, loại bỏ các phát hiện sai (false positive) do vật thể nền bị nhận nhầm là khuôn mặt. Điều kiện $Q \ge 0.45$ đánh giá chất lượng tổng thể: ví dụ một khung hình với $C_{\text{face}} = 0.85$, $S_{\text{blur}} = 0.20$ (khá mờ) và $S_{\text{bright}} = 0.60$ sẽ cho $Q = 0.45 \times 0.85 + 0.35 \times 0.20 + 0.20 \times 0.60 = 0.5725$, vẫn được chấp nhận; nhưng nếu $S_{\text{blur}}$ giảm xuống $0.05$ (rất mờ) thì $Q = 0.45 \times 0.85 + 0.35 \times 0.05 + 0.20 \times 0.60 = 0.42 < 0.45$, khung hình bị loại. Hai ngưỡng này được em tinh chỉnh qua thực nghiệm trên dữ liệu camera thực tế để cân bằng giữa việc giữ lại đủ khung hình phân tích và loại bỏ các khung hình gây nhiễu cho mô hình. Các khung hình không đạt chuẩn bị loại bỏ và ghi nhận lý do cụ thể (\textit{IMAGE\_BLURRY, IMAGE\_TOO\_DARK, IMAGE\_TOO\_BRIGHT}).
 
 \subsection*{2.2. Lý thuyết nhận dạng biểu cảm khuôn mặt (Facial Expression Recognition - FER)}
 \addcontentsline{toc}{subsection}{\numberline{}2.2. Lý thuyết nhận dạng biểu cảm khuôn mặt (Facial Expression Recognition - FER)}
@@ -77,14 +149,9 @@ Theo nghiên cứu kinh điển của nhà tâm lý học Paul Ekman và Hệ th
 
 Bài toán FER được mô hình hóa dưới dạng bài toán phân lớp đa lớp (Multi-class Classification). Ảnh khuôn mặt sau khi được phát hiện, căn chỉnh và chuẩn hóa sẽ được đưa vào mạng nơ-ron tích chập để trích xuất đặc trưng không gian ở nhiều mức độ khác nhau. Các lớp tích chập đầu thường học các đặc trưng cơ bản như cạnh, vùng sáng tối và đường cong; các lớp sâu hơn kết hợp những đặc trưng này thành cấu trúc có ý nghĩa hơn như mắt, lông mày, khóe miệng, nếp nhăn vùng mũi hoặc độ mở của miệng. Từ các đặc trưng đó, lớp phân loại cuối cùng sinh ra phân bố xác suất cho 7 lớp biểu cảm tiêu chuẩn.
 
-Trong thực tế, các kiến trúc mạng học sâu hiện đại thường kết hợp các khối tích chập sâu, kỹ thuật học chuyển giao (Transfer Learning) từ các mô hình được tiền huấn luyện trên những tập dữ liệu khuôn mặt quy mô lớn (như VGGFace2, MS-Celeb-1M, AffectNet, FER2013 \cite{fer2013}) và đôi khi bổ sung cơ chế chú ý (Attention Mechanisms) để tập trung vào các vùng mặt có giá trị phân biệt cao. Một số kiến trúc thường gặp gồm:
-\begin{itemize}
-    \item \textbf{MobileNetV2 / MobileNetV3 \cite{mobilenetv2}:} Sử dụng các khối tích chập tách biệt theo chiều sâu (Depthwise Separable Convolutions) và cấu trúc đảo ngược nút cổ chai (Inverted Residuals). Kiến trúc này giúp giảm đáng kể số lượng tham số và số phép tính dấu phẩy động (FLOPs), cho phép triển khai suy luận với tốc độ trên 30 FPS trên các máy chủ phổ thông hoặc thiết bị biên.
-    \item \textbf{ResNet:} Sử dụng các kết nối tắt (Residual Connections) để hỗ trợ huấn luyện mạng CNN có nhiều lớp. Trong quá trình lan truyền ngược, gradient là tín hiệu cho biết mỗi trọng số của mô hình cần được điều chỉnh theo hướng nào để làm giảm hàm mất mát. Khi mô hình có quá nhiều lớp, tín hiệu này có thể nhỏ dần khi truyền từ lớp cuối về các lớp đầu, khiến trọng số ở các lớp tích chập đầu cập nhật rất chậm hoặc gần như không được cập nhật; hiện tượng đó được gọi là triệt tiêu gradient (Vanishing Gradient). ResNet khắc phục một phần vấn đề này bằng cách cộng trực tiếp đầu vào của một khối với đầu ra sau các lớp tích chập, thường được mô tả dưới dạng $y = F(x) + x$. Nhờ đường truyền tắt này, thông tin và gradient có thể lan truyền ổn định hơn qua nhiều lớp, giúp mô hình CNN cập nhật trọng số hiệu quả hơn và học được các đặc trưng khuôn mặt phức tạp hơn phục vụ phân loại biểu cảm.
-    \item \textbf{EfficientNet:} Không tập trung chủ yếu vào kết nối tắt như ResNet, mà tối ưu sự cân bằng giữa độ sâu, độ rộng của mạng và độ phân giải ảnh đầu vào thông qua chiến lược mở rộng đồng bộ (Compound Scaling). Cách thiết kế này giúp cải thiện hiệu quả tính toán, đạt độ chính xác tốt với số tham số và FLOPs hợp lý. Trong bài toán FER, EfficientNet phù hợp khi cần cân bằng giữa chất lượng phân loại biểu cảm và chi phí suy luận, đặc biệt với dữ liệu khuôn mặt có biến thiên về ánh sáng, góc nhìn và kích thước khuôn mặt.
-\end{itemize}
+Trong phạm vi đồ án, nhánh FER sử dụng một bộ phân loại cảm xúc CNN bảy lớp được cung cấp qua thư viện DeepFace. Mục tiêu của phần lý thuyết này không phải trình bày nhiều kiến trúc ứng viên như MobileNet, ResNet hoặc EfficientNet, vì các kiến trúc đó không được đưa vào thực nghiệm benchmark hiện tại. Thay vào đó, em giữ cố định bộ phân loại cảm xúc CNN bảy lớp và tập trung đánh giá ảnh hưởng của bước phát hiện/căn chỉnh khuôn mặt lên kết quả FER.
 
-Đối với FER, các kiến trúc CNN sâu có lợi thế vì biểu cảm khuôn mặt nhiều khi chỉ khác nhau ở các thay đổi rất nhỏ, chẳng hạn khóe miệng hơi nhếch, lông mày hơi cau, mí mắt hơi hạ hoặc vùng mũi nhăn nhẹ. Tuy nhiên, việc sử dụng mạng càng sâu không tự động bảo đảm kết quả tốt hơn; hiệu quả thực tế còn phụ thuộc vào chất lượng dữ liệu huấn luyện, cân bằng lớp, tiền xử lý khuôn mặt, khả năng chống nhiễu và độ trễ trong quá trình suy luận khi triển khai camera thời gian thực.
+Về mặt nguyên lý, mạng CNN bảy lớp cho FER gồm các khối tích chập để học đặc trưng không gian trên vùng mặt đã chuẩn hóa, các lớp gộp mẫu (Pooling) để giảm kích thước đặc trưng và tăng tính ổn định trước dịch chuyển nhỏ, sau đó là các lớp kết nối đầy đủ và lớp phân loại Softmax. Cách thiết kế này phù hợp với FER vì biểu cảm khuôn mặt thường được thể hiện qua các biến đổi hình học nhỏ như khóe miệng nâng lên, lông mày cau lại, mí mắt mở rộng hoặc vùng mũi nhăn nhẹ. Do đó, trong phần benchmark phía sau, biến được thay đổi là detector/căn chỉnh khuôn mặt, còn mô hình FER được giữ nguyên là CNN bảy lớp để phép so sánh có cùng điều kiện đầu ra.
 
 \subsubsection*{2.2.3. Đầu ra của mạng nơ-ron trong bài toán FER}
 \addcontentsline{toc}{subsubsection}{\numberline{}2.2.3. Đầu ra của mạng nơ-ron trong bài toán FER}
@@ -99,15 +166,15 @@ Mô hình được tối ưu hóa bằng hàm mất mát Cross-Entropy:
 \end{equation}
 Trong đó $\bm{y}$ là vector nhãn one-hot thực tế. Lớp có xác suất lớn nhất $p_{\text{max}} = \max_i(p_i)$ được chọn làm biểu cảm chủ đạo (Dominant Expression), và giá trị $p_{\text{max}}$ chính là độ tin cậy dự đoán (Confidence).
 
-\subsubsection*{2.2.4. Quy trình thực nghiệm lựa chọn detector và mô hình FER}
-\addcontentsline{toc}{subsubsection}{\numberline{}2.2.4. Quy trình thực nghiệm lựa chọn detector và mô hình FER}
+\subsubsection*{2.2.4. Quy trình thực nghiệm lựa chọn detector cho pipeline FER}
+\addcontentsline{toc}{subsubsection}{\numberline{}2.2.4. Quy trình thực nghiệm lựa chọn detector cho pipeline FER}
 
-Trong bài toán phân tích biểu cảm từ camera, mô hình FER không nhận trực tiếp toàn bộ khung hình video. Mỗi khung hình trước hết phải đi qua bước phát hiện và căn chỉnh khuôn mặt để xác định vùng mặt hợp lệ. Sau đó, vùng mặt đã được chuẩn hóa mới được đưa vào bộ phân loại biểu cảm. Vì vậy, việc lựa chọn mô hình cần được thực hiện theo chuỗi phụ thuộc:
+Trong bài toán phân tích biểu cảm từ camera, mô hình FER không nhận trực tiếp toàn bộ khung hình video. Mỗi khung hình trước hết phải đi qua bước phát hiện và căn chỉnh khuôn mặt để xác định vùng mặt hợp lệ. Sau đó, vùng mặt đã được chuẩn hóa mới được đưa vào bộ phân loại biểu cảm. Trong thực nghiệm hiện tại, em không so sánh nhiều mô hình FER khác nhau; bộ phân loại cảm xúc được giữ cố định là CNN bảy lớp. Phần thay đổi giữa các lần chạy là detector/căn chỉnh khuôn mặt, gồm OpenCV, MTCNN và RetinaFace. Chuỗi xử lý được mô tả như sau:
 \begin{center}
 \textit{Khung hình video $\rightarrow$ detector/căn chỉnh khuôn mặt $\rightarrow$ mô hình FER $\rightarrow$ xác suất 7 lớp biểu cảm.}
 \end{center}
 
-Nếu detector bỏ sót khuôn mặt, phát hiện sai vùng mặt hoặc căn chỉnh lệch, đầu vào của mô hình FER sẽ bị nhiễu và kết quả phân loại biểu cảm không còn đáng tin cậy. Do đó, trong đồ án này em không chỉ khảo sát mô hình FER mà còn cần đánh giá riêng bước phát hiện/căn chỉnh khuôn mặt, sau đó đánh giá tổ hợp detector và FER trong cùng điều kiện.
+Nếu detector bỏ sót khuôn mặt, phát hiện sai vùng mặt hoặc căn chỉnh lệch, đầu vào của mô hình FER sẽ bị nhiễu và kết quả phân loại biểu cảm không còn đáng tin cậy. Do đó, trong đồ án này em đánh giá riêng bước phát hiện/căn chỉnh khuôn mặt, sau đó đánh giá tổ hợp detector và cùng một mô hình FER trong cùng điều kiện. Cách làm này bảo đảm kết quả so sánh phản ánh ảnh hưởng của detector, không bị lẫn với khác biệt giữa các kiến trúc phân loại biểu cảm.
 
 Việc đánh giá trong đồ án này được thực hiện bằng chương trình benchmark tự chạy. Chương trình trước hết lưu dự đoán của từng mẫu vào tệp CSV, sau đó đọc chính các tệp dự đoán này để tính Accuracy, Macro-F1, Detection Rate và các phân vị độ trễ. Bảng LaTeX và biểu đồ PNG được sinh tự động từ kết quả tính toán; em không nhập thủ công các giá trị trong bảng và không dùng số liệu công bố bên ngoài để xếp hạng.
 
@@ -138,7 +205,7 @@ CK+ không chứa ảnh âm, tức ảnh không có khuôn mặt, nên cột Fal
 
 \textbf{Lý do sử dụng thư viện DeepFace trong thực nghiệm.} Ở bước phân loại biểu cảm, em sử dụng thư viện DeepFace vì thư viện cung cấp sẵn quy trình nhận ảnh khuôn mặt, chuẩn hóa đầu vào và trả về xác suất của bảy lớp biểu cảm gồm \textit{angry}, \textit{disgust}, \textit{fear}, \textit{happy}, \textit{sad}, \textit{surprise} và \textit{neutral}. Tập nhãn này phù hợp trực tiếp với cấu trúc dữ liệu cảm xúc của hệ thống. DeepFace cũng cho phép thay đổi detector bằng cùng một tham số cấu hình, nhờ đó OpenCV, MTCNN và RetinaFace có thể được chạy trong cùng một quy trình mà không phải viết ba luồng xử lý khác nhau. Điều này giúp hạn chế sai lệch do cách tiền xử lý và tạo điều kiện so sánh các detector trong cùng điều kiện.
 
-Trong lần thử này, DeepFace nạp mạng CNN bảy lớp thông qua mô-đun \texttt{EmotionClient} và tệp trọng số tiền huấn luyện \path{facial_expression_model_weights.h5}. Việc sử dụng trọng số tiền huấn luyện giúp em xây dựng được mốc đánh giá ban đầu mà không phải tự huấn luyện lại mạng từ đầu. Khi bỏ qua detector và đưa trực tiếp 182 ảnh khuôn mặt CK+ vào mạng CNN, chương trình đo được Accuracy bằng 0,6264, Macro-F1 bằng 0,3834 và độ trễ suy luận p95 bằng 3,68 ms. Accuracy cho biết tỷ lệ dự đoán đúng trên toàn bộ mẫu, còn Macro-F1 tính F1 riêng cho từng lớp rồi lấy trung bình, do đó phản ánh rõ hơn khả năng nhận diện đồng đều giữa bảy lớp khi dữ liệu bị mất cân bằng. Kết quả này được dùng làm mốc của bộ phân loại cảm xúc đang sử dụng trước khi đánh giá toàn bộ pipeline.
+Trong lần thử này, DeepFace nạp mạng CNN bảy lớp thông qua mô-đun \texttt{EmotionClient} và bộ trọng số tiền huấn luyện đi kèm. Việc sử dụng trọng số tiền huấn luyện giúp em xây dựng được mốc đánh giá ban đầu mà không phải tự huấn luyện lại mạng từ đầu. Khi bỏ qua detector và đưa trực tiếp 182 ảnh khuôn mặt CK+ vào mạng CNN, chương trình đo được Accuracy bằng 0,6264, Macro-F1 bằng 0,3834 và độ trễ suy luận p95 bằng 3,68 ms. Accuracy cho biết tỷ lệ dự đoán đúng trên toàn bộ mẫu, còn Macro-F1 tính F1 riêng cho từng lớp rồi lấy trung bình, do đó phản ánh rõ hơn khả năng nhận diện đồng đều giữa bảy lớp khi dữ liệu bị mất cân bằng. Kết quả này được dùng làm mốc của bộ phân loại cảm xúc đang sử dụng trước khi đánh giá toàn bộ pipeline.
 
 Để đo ảnh hưởng của bước phát hiện và căn chỉnh lên kết quả cuối, em tiếp tục ghép cùng mạng CNN bảy lớp với từng detector. Mỗi lỗi không trả ra khuôn mặt được tính là một mẫu không có kết quả, thay vì bị loại khỏi phép tính. Bảng~\ref{tab:ckplus-e2e-benchmark} và Hình~\ref{fig:ckplus-e2e-benchmark} đều được xuất trực tiếp từ lần chạy này.
 
@@ -182,7 +249,7 @@ Hiện tượng này được gọi là nhấp nháy ở mức khung hình (Fram
 \subsubsection*{2.3.2. Làm mịn kết quả ở mức khung hình bằng EMA}
 \addcontentsline{toc}{subsubsection}{\numberline{}2.3.2. Làm mịn kết quả ở mức khung hình bằng EMA}
 
-Một phương pháp khắc phục là không làm mịn trực tiếp nhãn cảm xúc, mà làm mịn vector xác suất đầu ra của mô hình FER. Trong đồ án, kỹ thuật Trung bình trượt hàm mũ (Exponential Moving Average - EMA) được áp dụng như một bước hậu xử lý sau mô hình nhận dạng biểu cảm. EMA không thay thế mô hình FER, mà giúp chuỗi xác suất đầu ra ổn định hơn trước khi chọn biểu cảm chủ đạo.
+Một phương pháp khắc phục là không làm mịn trực tiếp nhãn cảm xúc, mà làm mịn vector xác suất đầu ra của mô hình FER. Trong đồ án này, em áp dụng kỹ thuật Trung bình trượt hàm mũ (Exponential Moving Average - EMA) như một bước hậu xử lý sau mô hình nhận dạng biểu cảm. EMA không thay thế mô hình FER, mà giúp chuỗi xác suất đầu ra ổn định hơn trước khi chọn biểu cảm chủ đạo.
 
 Gọi $\bm{p}_t = [p_t^{(1)}, \dots, p_t^{(7)}]^T$ là vector xác suất đầu ra của mô hình tại khung hình thứ $t$, và $\bm{s}_t = [s_t^{(1)}, \dots, s_t^{(7)}]^T$ là vector xác suất đã làm mịn. Công thức cập nhật đệ quy được định nghĩa:
 \begin{equation}
@@ -224,7 +291,7 @@ Mỗi khu vực đảm nhiệm một vai trò khác nhau trong quá trình phụ
 \begin{equation}
 \text{ExperienceState} = f(\bm{p}^{\text{FER}}_t + \bm{s}_{1:T} + D + Z + O)
 \end{equation}
-Trong đó $\bm{p}^{\text{FER}}_t$ là vector xác suất 7 lớp biểu cảm tại thời điểm $t$; $\bm{s}_{1:T}$ là chuỗi xác suất đã được làm mịn trong toàn bộ phiên; $D$ là thời gian khách hàng dừng tại khu vực quan sát; $Z$ là khu vực hoặc điểm chạm trong cửa hàng; và $O$ là tín hiệu liên quan đến sự kiện đơn hàng nếu có. Dấu cộng trong biểu thức thể hiện việc tổng hợp các nhóm tín hiệu đầu vào trước khi đưa vào hàm suy luận $f$. Cách mô hình hóa này được đưa ra nhằm đặt kết quả FER vào đúng ngữ cảnh thời gian và nghiệp vụ, từ đó giảm rủi ro kết luận sai do một dự đoán tức thời. Trong đồ án, hàm $f$ được hiện thực bằng tập luật phân loại để xác định 6 trạng thái trải nghiệm như sau:
+Trong đó $\bm{p}^{\text{FER}}_t$ là vector xác suất 7 lớp biểu cảm tại thời điểm $t$; $\bm{s}_{1:T}$ là chuỗi xác suất đã được làm mịn trong toàn bộ phiên; $D$ là thời gian khách hàng dừng tại khu vực quan sát; $Z$ là khu vực hoặc điểm chạm trong cửa hàng; và $O$ là tín hiệu liên quan đến sự kiện đơn hàng nếu có. Dấu cộng trong biểu thức thể hiện việc tổng hợp các nhóm tín hiệu đầu vào trước khi đưa vào hàm suy luận $f$. Cách mô hình hóa này được đưa ra nhằm đặt kết quả FER vào đúng ngữ cảnh thời gian và nghiệp vụ, từ đó giảm rủi ro kết luận sai do một dự đoán tức thời. Trong đồ án này, em hiện thực hàm $f$ bằng tập luật phân loại để xác định 6 trạng thái trải nghiệm như sau:
 \begin{itemize}
     \item \textbf{\texttt{DELIGHTED} (Rất hài lòng):} Xác suất $p_{\text{happy}} \ge 0.55$ duy trì ổn định.
     \item \textbf{\texttt{ENGAGED} (Hứng thú, chú ý cao):} Tương tác tập trung tại khu vực sản phẩm hoặc quầy tư vấn với biểu cảm tích cực/tập trung kéo dài.

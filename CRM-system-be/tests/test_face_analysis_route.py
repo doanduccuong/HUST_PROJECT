@@ -10,7 +10,6 @@ VALID_RESULT = {
     "faceCount": 1,
     "primaryFace": {
         "region": {"x": 1, "y": 2, "width": 100, "height": 120},
-        "embeddings": {"upper": [0.1], "mid": [0.2], "lower": [0.3]},
         "expression": {
             "dominant": "neutral",
             "confidence": 0.8,
